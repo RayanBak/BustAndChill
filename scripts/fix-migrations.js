@@ -11,6 +11,26 @@ const { execSync } = require('child_process');
 async function checkAndResolve() {
   console.log('🔍 Vérification des migrations Prisma...');
 
+  // Nettoyer le BOM du fichier migration.sql si présent
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const migrationPath = path.join(process.cwd(), 'prisma', 'migrations', '20240101000000_init', 'migration.sql');
+    
+    if (fs.existsSync(migrationPath)) {
+      let content = fs.readFileSync(migrationPath, 'utf8');
+      // Supprimer le BOM UTF-8 si présent
+      if (content.charCodeAt(0) === 0xFEFF) {
+        console.log('🧹 Suppression du BOM UTF-8 du fichier migration...');
+        content = content.slice(1);
+        fs.writeFileSync(migrationPath, content, 'utf8');
+        console.log('✅ BOM supprimé');
+      }
+    }
+  } catch (cleanError) {
+    console.log('⚠️  Impossible de nettoyer le BOM:', cleanError.message);
+  }
+
   try {
     // Essayer d'appliquer les migrations normalement
     console.log('📦 Tentative d\'application des migrations...');
