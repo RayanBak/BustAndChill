@@ -213,15 +213,31 @@ function PlayingCard({
   const { suit, rank } = card as Card;
   const s = suits[suit] || { symbol: '?', color: '#1f2937' };
 
+  // Stabiliser l'animation : une fois qu'elle est jouée, on garde l'état
+  const [hasAnimated, setHasAnimated] = useState(false);
+  
+  useEffect(() => {
+    if (animate && delay >= 0 && !hasAnimated) {
+      const timer = setTimeout(() => {
+        setHasAnimated(true);
+      }, delay + 700); // Après la fin de l'animation
+      return () => clearTimeout(timer);
+    }
+  }, [animate, delay, hasAnimated]);
+
   return (
     <div
-      className="rounded-lg bg-white flex flex-col justify-between shadow-lg transition-all duration-300"
+      className="rounded-lg bg-white flex flex-col justify-between shadow-lg transition-all duration-300 playing-card"
       style={{
         width: w, height: h,
-        padding: small ? '2px' : '4px',
+        padding: actualSmall ? '2px' : '4px',
         border: '1px solid #e5e7eb',
-        animation: animate ? 'cardDeal 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards' : 'none',
-        animationDelay: animate ? `${delay}ms` : '0ms',
+        opacity: 1, // Toujours visible
+        animation: (animate && !hasAnimated) ? 'cardDeal 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards' : 'none',
+        animationDelay: (animate && !hasAnimated) ? `${delay}ms` : '0ms',
+        transform: hasAnimated ? 'translateX(0) translateY(0) rotate(0deg) scale(1)' : 'translateX(0) translateY(0) rotate(0deg) scale(1)',
+        position: 'relative',
+        zIndex: 1,
       }}
     >
       <div className="text-left" style={{ color: s.color, fontSize: small ? 9 : 11, fontWeight: 700 }}>
@@ -349,14 +365,14 @@ function PlayerSpot({
                 </div>
                 
                 {/* Cartes de la main */}
-                <div className="flex -space-x-2 sm:-space-x-3 mb-1">
+                <div className="flex -space-x-1.5 sm:-space-x-3 mb-1">
                   {hand.cards.map((card, i) => (
                     <PlayingCard 
-                      key={i} 
+                      key={`split-${handIdx}-${i}-${card.rank}-${card.suit}`} 
                       card={card} 
                       small={isMobile}
-                      animate={isDealing}
-                      delay={handIdx * 300 + i * 500}
+                      animate={false} // Désactiver l'animation pour éviter les bugs
+                      delay={0}
                     />
                   ))}
                 </div>
@@ -422,29 +438,31 @@ function PlayerSpot({
     <div className={`flex flex-col items-center transition-all duration-300 ${
       player.isCurrentTurn ? 'transform scale-110' : ''
     }`}>
-      {/* Cartes du joueur */}
-      <div className="min-h-[50px] sm:min-h-[70px] flex items-end justify-center mb-1">
-        {hasCards && (
-          <div className="flex -space-x-2 sm:-space-x-4 transform hover:scale-105 transition-transform">
+      {/* Cartes du joueur - Toujours afficher si le joueur a des cartes */}
+      <div className="min-h-[40px] sm:min-h-[70px] flex items-end justify-center mb-0.5 sm:mb-1">
+        {hasCards ? (
+          <div className="flex -space-x-1.5 sm:-space-x-4 transform hover:scale-105 transition-transform">
             {player.cards.map((card, i) => (
               <PlayingCard 
-                key={i} 
+                key={`${player.oderId}-card-${i}-${card.rank}-${card.suit}`} 
                 card={card} 
                 small={isMobile}
-                animate={isDealing}
-                delay={i * 500}
+                animate={false} // Désactiver l'animation pour éviter les bugs
+                delay={0}
               />
             ))}
           </div>
+        ) : (
+          <div className="w-8 h-12 sm:w-12 sm:h-16 rounded border border-white/10 bg-black/20" />
         )}
       </div>
       
-      {/* Badge valeur / status - TOUJOURS afficher si le joueur a des cartes */}
-      <div className="h-7 flex items-center justify-center gap-1 mb-1">
+      {/* Badge valeur / status - TOUJOURS afficher si le joueur a des cartes - Optimisé mobile */}
+      <div className="h-5 sm:h-7 flex items-center justify-center gap-0.5 sm:gap-1 mb-0.5 sm:mb-1">
         {hasCards && (
           <>
             {/* Valeur principale */}
-            <span className={`px-3 py-1 rounded-full text-xs font-bold shadow-md transition-all ${
+            <span className={`px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold shadow-md transition-all ${
               player.hasBlackjack 
                 ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-black' 
                 : player.isBusted
@@ -455,18 +473,18 @@ function PlayerSpot({
             }`}>
               {player.hasBlackjack ? '✨ BJ!' : player.isBusted ? `💥 ${player.value}` : player.value}
             </span>
-            {/* Badge supplémentaire pour status */}
+            {/* Badge supplémentaire pour status - Masqué sur mobile */}
             {player.isStanding && !player.isBusted && !player.hasBlackjack && (
-              <span className="px-2 py-1 bg-blue-500/80 rounded-full text-[10px] font-bold text-white">STAND</span>
+              <span className="hidden sm:inline-block px-2 py-1 bg-blue-500/80 rounded-full text-[10px] font-bold text-white">STAND</span>
             )}
           </>
         )}
       </div>
       
-      {/* Zone de mise avec effet glow */}
+      {/* Zone de mise avec effet glow - Optimisée pour mobile */}
       <div 
         className={`
-          relative w-16 h-16 rounded-full flex items-center justify-center
+          relative w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center
           transition-all duration-300
           ${player.isCurrentTurn ? 'animate-pulse' : ''}
         `}
@@ -474,34 +492,35 @@ function PlayerSpot({
           background: bet > 0 
             ? 'radial-gradient(circle, rgba(251,191,36,0.4) 0%, rgba(251,191,36,0.1) 70%, transparent 100%)'
             : 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%)',
-          border: bet > 0 ? '3px solid rgba(251,191,36,0.6)' : '2px dashed rgba(255,255,255,0.15)',
+          border: bet > 0 ? (isMobile ? '2px solid rgba(251,191,36,0.6)' : '3px solid rgba(251,191,36,0.6)') : '2px dashed rgba(255,255,255,0.15)',
           boxShadow: player.isCurrentTurn 
-            ? '0 0 30px rgba(251,191,36,0.5), 0 0 60px rgba(251,191,36,0.2)' 
+            ? '0 0 20px rgba(251,191,36,0.5), 0 0 40px rgba(251,191,36,0.2)' 
             : bet > 0 
-              ? '0 0 20px rgba(251,191,36,0.2)' 
+              ? '0 0 15px rgba(251,191,36,0.2)' 
               : 'none',
         }}
       >
         {/* Indicateur tour actuel */}
         {player.isCurrentTurn && (
-          <div className="absolute -top-1 -right-1 w-4 h-4 bg-amber-400 rounded-full animate-ping" />
+          <div className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 w-3 h-3 sm:w-4 sm:h-4 bg-amber-400 rounded-full animate-ping" />
         )}
         
         {bet > 0 ? (
-          <span className="text-amber-300 font-bold text-sm drop-shadow-lg">${bet}</span>
+          <span className="text-amber-300 font-bold text-xs sm:text-sm drop-shadow-lg">${bet}</span>
         ) : (
-          <span className="text-white/20 text-[10px]">•••</span>
+          <span className="text-white/20 text-[8px] sm:text-[10px]">•••</span>
         )}
       </div>
       
-      {/* Nom du joueur */}
-      <div className="mt-2 text-center">
-        <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+      {/* Nom du joueur - Optimisé mobile */}
+      <div className="mt-1 sm:mt-2 text-center">
+        <div className={`px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-xs font-medium truncate max-w-[80px] sm:max-w-none ${
           isMe 
             ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
             : 'bg-black/30 text-white/70'
         }`}>
-          {player.username}{isMe && ' 👤'}
+          <span className="truncate block">{player.username}</span>
+          {isMe && <span className="ml-0.5">👤</span>}
         </div>
       </div>
       
@@ -639,14 +658,15 @@ function FullscreenTable({
         </div>
       </div>
 
-      {/* Zone de jeu */}
-      <div className="flex-1 flex items-center justify-center p-2 sm:p-4 overflow-hidden">
+      {/* Zone de jeu - Optimisée pour mobile */}
+      <div className="flex-1 flex items-center justify-center p-1 sm:p-4 overflow-hidden min-h-0">
         <div 
-          className="relative w-full max-w-4xl rounded-[40px] sm:rounded-[80px]"
+          className="relative w-full max-w-4xl rounded-[20px] sm:rounded-[80px]"
           style={{
-            aspectRatio: '16/9',
+            aspectRatio: isMobile ? '4/3' : '16/9',
+            maxHeight: isMobile ? '60vh' : 'none',
             background: 'radial-gradient(ellipse 100% 80% at 50% 100%, #0d7a41 0%, #0a6235 50%, #074a29 100%)',
-            border: '10px solid #4a3423',
+            border: isMobile ? '6px solid #4a3423' : '10px solid #4a3423',
             boxShadow: `
               inset 0 0 40px rgba(0,0,0,0.5),
               inset 0 -20px 30px rgba(0,0,0,0.3),
@@ -661,10 +681,10 @@ function FullscreenTable({
             border: '2px solid rgba(212,175,55,0.15)',
           }} />
           
-          {/* Zone croupier */}
-          <div className="absolute top-2 sm:top-8 left-1/2 -translate-x-1/2 flex flex-col items-center">
-            <div className="bg-black/40 backdrop-blur-sm px-3 sm:px-6 py-1 sm:py-2 rounded-full mb-1 sm:mb-3 flex items-center gap-2 sm:gap-4">
-              <span className="text-amber-400/80 text-xs sm:text-sm font-semibold uppercase tracking-wider">Croupier</span>
+          {/* Zone croupier - Optimisée pour mobile */}
+          <div className="absolute top-1 sm:top-8 left-1/2 -translate-x-1/2 flex flex-col items-center z-10">
+            <div className="bg-black/40 backdrop-blur-sm px-2 sm:px-6 py-0.5 sm:py-2 rounded-full mb-0.5 sm:mb-3 flex items-center gap-1 sm:gap-4">
+              <span className="text-amber-400/80 text-[10px] sm:text-sm font-semibold uppercase tracking-wider">Croupier</span>
               {state.dealerHistory && state.dealerHistory.length > 0 && (
                 <div className="hidden sm:block">
                   <DealerHistory history={state.dealerHistory} />
@@ -674,14 +694,14 @@ function FullscreenTable({
             
             {showDealerCards && state.dealer.cards.length > 0 ? (
               <div className="flex flex-col items-center">
-                <div className="flex -space-x-2 sm:-space-x-3 mb-1 sm:mb-3 transform hover:scale-105 transition-transform">
+                <div className="flex -space-x-1.5 sm:-space-x-3 mb-1 sm:mb-3 transform hover:scale-105 transition-transform">
                   {state.dealer.cards.map((card, i) => (
                     <PlayingCard 
-                      key={i} 
+                      key={`dealer-${i}-${'hidden' in card ? 'hidden' : `${card.rank}-${card.suit}`}`} 
                       card={card} 
                       small={isMobile}
-                      animate={state.phase === 'dealing' || state.phase === 'dealer_turn'}
-                      delay={i * 500}
+                      animate={false} // Désactiver l'animation pour éviter les bugs
+                      delay={0}
                     />
                   ))}
                 </div>
@@ -725,72 +745,90 @@ function FullscreenTable({
             )}
           </div>
           
-          {/* Message central */}
-          <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2">
+          {/* Message central - Optimisé mobile */}
+          <div className="absolute top-[35%] sm:top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
             {state.phase === 'lobby' && (
-              <div className="text-center bg-black/30 backdrop-blur-sm px-8 py-4 rounded-2xl">
-                <div className="text-white/80 text-xl mb-2 font-semibold">En attente des joueurs</div>
-                <div className="text-amber-400/80 text-lg">{state.players.length}/{state.maxPlayers}</div>
+              <div className="text-center bg-black/30 backdrop-blur-sm px-4 sm:px-8 py-2 sm:py-4 rounded-xl sm:rounded-2xl">
+                <div className="text-white/80 text-base sm:text-xl mb-1 sm:mb-2 font-semibold">En attente des joueurs</div>
+                <div className="text-amber-400/80 text-sm sm:text-lg">{state.players.length}/{state.maxPlayers}</div>
               </div>
             )}
             
             {state.phase === 'dealing' && (
-              <div className="bg-black/40 backdrop-blur-sm px-8 py-4 rounded-2xl">
-                <div className="text-white text-xl font-medium flex items-center gap-2">
+              <div className="bg-black/40 backdrop-blur-sm px-4 sm:px-8 py-2 sm:py-4 rounded-xl sm:rounded-2xl">
+                <div className="text-white text-sm sm:text-xl font-medium flex items-center gap-2">
                   <span className="inline-block w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
-                  Distribution en cours...
+                  <span>Distribution...</span>
                 </div>
               </div>
             )}
             
             {state.phase === 'dealer_turn' && (
-              <div className="bg-black/40 backdrop-blur-sm px-8 py-4 rounded-2xl border border-amber-500/30">
-                <div className="text-amber-400 text-xl font-semibold flex items-center gap-2">
+              <div className="bg-black/40 backdrop-blur-sm px-4 sm:px-8 py-2 sm:py-4 rounded-xl sm:rounded-2xl border border-amber-500/30">
+                <div className="text-amber-400 text-sm sm:text-xl font-semibold flex items-center gap-2">
                   <span className="inline-block w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
-                  Tour du croupier
+                  <span>Tour du croupier</span>
                 </div>
               </div>
             )}
             
             {isInsurance && (
-              <div className="bg-black/90 backdrop-blur-md rounded-3xl p-8 text-center border-2 border-amber-500/50 shadow-2xl shadow-amber-500/20">
-                <div className="text-4xl mb-3">🛡️</div>
-                <div className="text-amber-400 font-bold text-2xl mb-3">Assurance ?</div>
-                <div className="text-white/70 text-sm mb-6">
-                  Le croupier montre un As<br/>
-                  <span className="text-amber-400 font-semibold">Coût: ${myPlayer ? Math.floor(myPlayer.bet / 2) : 0}</span>
-                </div>
-                <div className="flex gap-4 justify-center">
-                  <button 
-                    onClick={() => onInsurance(true)}
-                    className="px-8 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold rounded-xl transition-all shadow-lg transform hover:scale-105"
-                  >
-                    ✓ Prendre
-                  </button>
-                  <button 
-                    onClick={() => onInsurance(false)}
-                    className="px-8 py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-all border border-white/20"
-                  >
-                    ✗ Refuser
-                  </button>
+              <div 
+                className="fixed inset-0 z-[9999] flex items-center justify-center p-4 insurance-modal"
+                style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}
+                onClick={(e) => {
+                  // Empêcher la fermeture en cliquant sur le fond
+                  if (e.target === e.currentTarget) return;
+                }}
+              >
+                <div 
+                  className="bg-black/95 backdrop-blur-md rounded-3xl p-6 sm:p-8 text-center border-2 border-amber-500/50 shadow-2xl shadow-amber-500/20 max-w-md w-full"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="text-4xl mb-3">🛡️</div>
+                  <div className="text-amber-400 font-bold text-xl sm:text-2xl mb-3">Assurance ?</div>
+                  <div className="text-white/70 text-sm mb-6">
+                    Le croupier montre un As<br/>
+                    <span className="text-amber-400 font-semibold">Coût: ${myPlayer ? Math.floor(myPlayer.bet / 2) : 0}</span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+                    <button 
+                      onClick={() => onInsurance(true)}
+                      className="px-6 sm:px-8 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold rounded-xl transition-all shadow-lg transform hover:scale-105 active:scale-95"
+                    >
+                      ✓ Prendre
+                    </button>
+                    <button 
+                      onClick={() => onInsurance(false)}
+                      className="px-6 sm:px-8 py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-all border border-white/20 active:scale-95"
+                    >
+                      ✗ Refuser
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
           </div>
           
-          {/* Joueurs en arc */}
-          <div className="absolute bottom-2 sm:bottom-6 left-0 right-0">
-            <div className="flex justify-center items-end gap-2 sm:gap-8 px-2 sm:px-12 overflow-x-auto">
+          {/* Joueurs en arc - Optimisé pour mobile */}
+          <div className="absolute bottom-1 sm:bottom-6 left-0 right-0">
+            <div className={`flex justify-center items-end gap-1 sm:gap-8 px-1 sm:px-12 ${
+              isMobile && state.players.length > 3 ? 'overflow-x-auto pb-2' : ''
+            }`}>
               {state.players.map((player, idx) => {
                 const isMe = player.oderId === myPlayer?.oderId;
-                // Offset pour créer un effet d'arc (réduit sur mobile)
-                const offset = Math.abs(idx - (state.players.length - 1) / 2);
-                const yOffset = offset * (isMobile ? 4 : 8);
+                // Sur mobile avec beaucoup de joueurs, on les met en ligne horizontale
+                // Sinon, on garde l'arc
+                const offset = isMobile && state.players.length > 3 ? 0 : Math.abs(idx - (state.players.length - 1) / 2);
+                const yOffset = isMobile && state.players.length > 3 ? 0 : (offset * (isMobile ? 2 : 8));
                 
                 return (
                   <div 
                     key={player.oderId} 
-                    style={{ marginBottom: yOffset }}
+                    style={{ 
+                      marginBottom: yOffset,
+                      minWidth: isMobile ? '80px' : 'auto',
+                    }}
                     className="transition-all duration-300 flex-shrink-0"
                   >
                     <PlayerSpot
@@ -798,7 +836,7 @@ function FullscreenTable({
                       isMe={isMe}
                       currentBet={isMe ? betAmount : 0}
                       phase={state.phase}
-                      isDealing={state.phase === 'dealing'}
+                      isDealing={false} // Désactiver l'animation pour éviter les bugs
                     />
                   </div>
                 );
