@@ -1,52 +1,52 @@
 # 🃏 Bust & Chill
 
-A real-time multiplayer Blackjack game built with Next.js, Socket.IO, and Prisma.
+Un jeu de Blackjack multijoueur en temps réel construit avec Next.js, Socket.IO et Prisma.
 
 ![Bust & Chill](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)
 ![Socket.IO](https://img.shields.io/badge/Socket.IO-4-black?style=for-the-badge&logo=socket.io)
 ![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?style=for-the-badge&logo=prisma)
 
-## Features
+## Fonctionnalités
 
-- 🎮 **Multiplayer Blackjack** - Play with 2-5 players
-- ⚡ **Real-time Updates** - Instant game state synchronization via WebSockets
-- 🔐 **Authentication** - Secure registration with email verification
-- 📧 **Custom Emails** - MJML templates for beautiful emails
-- 🏆 **Leaderboard** - Track game history and scores
-- 🌙 **Dark Mode** - Toggle between light and dark themes
-- 📱 **Responsive** - Works on desktop and mobile
+- 🎮 **Blackjack Multijoueur** - Jouez avec 2 à 5 joueurs
+- ⚡ **Mises à jour en temps réel** - Synchronisation instantanée de l'état du jeu via WebSockets
+- 🔐 **Authentification** - Inscription sécurisée avec vérification par email
+- 📧 **Emails personnalisés** - Templates MJML pour de beaux emails
+- 🏆 **Classement** - Suivez l'historique des parties et les scores
+- 🌙 **Mode sombre** - Basculez entre les thèmes clair et sombre
+- 📱 **Responsive** - Fonctionne sur ordinateur et mobile
 
-## Prerequisites
+## Prérequis
 
-- **Node.js** 18+ 
-- **PostgreSQL** (local or Docker)
-- **MailHog** (optional, for email testing)
+- **Node.js** 18+
+- **PostgreSQL** (local ou Docker)
+- **MailHog** (optionnel, pour tester les emails)
 
-## Quick Start
+## Démarrage Rapide
 
-### 1. Clone and Install
+### 1. Cloner et Installer
 
 ```bash
 cd bust-and-chill
 npm install
 ```
 
-### 2. Setup Environment
+### 2. Configurer l'Environnement
 
-Create a `.env` file in the project root:
+Créez un fichier `.env` à la racine du projet :
 
 ```env
-# Database
+# Base de données
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/bustandchill?schema=public"
 
-# JWT Secret (change this!)
+# Secret JWT (changez cela !)
 JWT_SECRET="your-super-secret-jwt-key-change-in-production"
 
-# App URL
+# URL de l'application
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 
-# SMTP Configuration (MailHog)
+# Configuration SMTP (MailHog)
 SMTP_HOST="localhost"
 SMTP_PORT="1025"
 SMTP_USER=""
@@ -54,175 +54,181 @@ SMTP_PASS=""
 SMTP_FROM="noreply@bustandchill.local"
 ```
 
-### 3. Setup Database
+### 3. Configurer la Base de Données
 
-#### Option A: Using Docker (Recommended)
+#### Option A : Utiliser Docker (Recommandé)
 
 ```bash
-# Start PostgreSQL with Docker
+# Démarrer PostgreSQL avec Docker
 docker run --name bustandchill-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=bustandchill -p 5432:5432 -d postgres:15
 
-# Wait a few seconds, then run migrations
+# Attendez quelques secondes, puis exécutez les migrations
 npm run db:push
 npm run db:generate
 ```
 
-#### Option B: Using Local PostgreSQL
+#### Option B : Utiliser PostgreSQL Local
 
-1. Create a database named `bustandchill`
-2. Update `DATABASE_URL` in `.env` with your credentials
-3. Run migrations:
+1. Créez une base de données nommée `bustandchill`
+2. Mettez à jour `DATABASE_URL` dans `.env` avec vos identifiants
+3. Exécutez les migrations :
 
 ```bash
 npm run db:push
 npm run db:generate
 ```
 
-### 4. Setup Email (Optional)
+### 4. Configurer les Emails (Optionnel)
 
-For email verification testing, use MailHog:
+Pour tester la vérification par email, utilisez MailHog :
 
 ```bash
-# Using Docker
+# Avec Docker
 docker run -d -p 1025:1025 -p 8025:8025 mailhog/mailhog
 
-# Access MailHog UI at http://localhost:8025
+# Accédez à l'interface MailHog à http://localhost:8025
 ```
 
-If MailHog is not available, verification URLs will be logged to the console.
+Si MailHog n'est pas disponible, les URLs de vérification seront affichées dans la console.
 
-### 5. Start the Server
+### 5. Démarrer le Serveur
 
 ```bash
 npm run dev
 ```
 
-The app will be available at **http://localhost:3000**
+L'application sera disponible sur **http://localhost:3000**
 
-## Testing Multiplayer
+## Tester le Multijoueur
 
-To test multiplayer locally:
+Pour tester le multijoueur en local :
 
-1. Open **http://localhost:3000** in Chrome
-2. Open **http://localhost:3000** in Firefox (or Chrome Incognito)
-3. Register different accounts in each browser
-4. Verify emails (check MailHog at http://localhost:8025 or console logs)
-5. Login in both browsers
-6. In Browser 1: Create a game and copy the Game ID
-7. In Browser 2: Join with the Game ID
-8. Start the game and play!
+1. Ouvrez **http://localhost:3000** dans Chrome
+2. Ouvrez **http://localhost:3000** dans Firefox (ou Chrome en mode navigation privée)
+3. Créez des comptes différents dans chaque navigateur
+4. Vérifiez les emails (consultez MailHog à http://localhost:8025 ou les logs de la console)
+5. Connectez-vous dans les deux navigateurs
+6. Dans le Navigateur 1 : Créez une partie et copiez le Game ID
+7. Dans le Navigateur 2 : Rejoignez avec le Game ID
+8. Lancez la partie et jouez !
 
-## Game Rules
+## Règles du Jeu
 
-### Blackjack Basics
+### Bases du Blackjack
 
-- Each player is dealt 2 cards
-- Goal: Get as close to 21 as possible without going over
-- **Hit**: Draw another card
-- **Stand**: Keep your current hand
-- Face cards (J, Q, K) = 10 points
-- Aces = 1 or 11 points (automatic)
-- Going over 21 = Bust (you lose)
+- Chaque joueur reçoit 2 cartes
+- Objectif : Se rapprocher le plus possible de 21 sans dépasser
+- **Tirer** : Piocher une autre carte
+- **Rester** : Garder votre main actuelle
+- Les figures (J, Q, K) = 10 points
+- Les As = 1 ou 11 points (automatique)
+- Dépasser 21 = Bust (vous perdez)
 
-### Turn System
+### Système de Tours
 
-- Players take turns in seat order
-- 30-second timer per turn
-- If timer expires, auto-stand
-- Game ends when all players have finished
+- Les joueurs jouent à tour de rôle dans l'ordre des sièges
+- Timer de 30 secondes par tour
+- Si le timer expire, reste automatique
+- La partie se termine quand tous les joueurs ont fini
 
-### Scoring
+### Système de Score
 
-- Winner = Highest hand value ≤ 21
-- Ties are possible (multiple winners)
-- Busted players score 0 points
+- Gagnant = Main la plus élevée ≤ 21
+- Les égalités sont possibles (plusieurs gagnants)
+- Les joueurs qui ont fait bust marquent 0 point
 
-## Project Structure
+## Structure du Projet
 
 ```
 bust-and-chill/
 ├── prisma/
-│   └── schema.prisma      # Database schema
+│   └── schema.prisma      # Schéma de base de données
 ├── src/
-│   ├── app/               # Next.js App Router pages
-│   │   ├── api/           # API routes
-│   │   ├── dashboard/     # Dashboard page
-│   │   ├── game/[uuid]/   # Game page
-│   │   ├── login/         # Login page
-│   │   ├── register/      # Register page
-│   │   └── verify-email/  # Email verification
-│   ├── components/        # React components
-│   ├── hooks/             # Custom React hooks
-│   ├── lib/               # Utilities (db, auth, email)
-│   └── server/            # Socket.IO & game engine
-├── server.ts              # Custom server with Socket.IO
+│   ├── app/               # Pages Next.js App Router
+│   │   ├── api/           # Routes API
+│   │   ├── dashboard/     # Page dashboard
+│   │   ├── game/[uuid]/   # Page de jeu
+│   │   ├── login/         # Page de connexion
+│   │   ├── register/     # Page d'inscription
+│   │   └── verify-email/  # Vérification email
+│   ├── components/        # Composants React
+│   ├── hooks/            # Hooks React personnalisés
+│   ├── lib/              # Utilitaires (db, auth, email)
+│   └── server/           # Socket.IO & moteur de jeu
+├── server.js              # Serveur personnalisé avec Socket.IO
 └── package.json
 ```
 
-## Available Scripts
+## Scripts Disponibles
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start development server with Socket.IO |
-| `npm run build` | Build for production |
-| `npm run start` | Start production server |
-| `npm run db:push` | Push schema to database |
-| `npm run db:generate` | Generate Prisma client |
-| `npm run db:migrate` | Run database migrations |
-| `npm run db:studio` | Open Prisma Studio |
+| Commande              | Description                                         |
+| --------------------- | --------------------------------------------------- |
+| `npm run dev`         | Démarrer le serveur de développement avec Socket.IO |
+| `npm run build`       | Construire pour la production                       |
+| `npm run start`       | Démarrer le serveur en production                   |
+| `npm run db:push`     | Pousser le schéma vers la base de données           |
+| `npm run db:generate` | Générer le client Prisma                            |
+| `npm run db:migrate`  | Exécuter les migrations de base de données          |
+| `npm run db:studio`   | Ouvrir Prisma Studio                                |
 
-## Tech Stack
+## Stack Technologique
 
-- **Frontend**: Next.js 16, React 19, TailwindCSS, daisyUI
-- **Backend**: Next.js API Routes, Socket.IO
-- **Database**: PostgreSQL, Prisma ORM
-- **Auth**: JWT (httpOnly cookies)
-- **Email**: Nodemailer, MJML templates
-- **Real-time**: Socket.IO WebSockets
+- **Frontend** : Next.js 14, React 18, TailwindCSS, daisyUI
+- **Backend** : Routes API Next.js, Socket.IO
+- **Base de données** : PostgreSQL, Prisma ORM
+- **Authentification** : JWT (cookies httpOnly)
+- **Email** : Nodemailer, templates MJML
+- **Temps réel** : WebSockets Socket.IO
 
-## Environment Variables
+## Variables d'Environnement
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | Required |
-| `JWT_SECRET` | Secret for JWT signing | Required |
-| `NEXT_PUBLIC_APP_URL` | App URL for emails | http://localhost:3000 |
-| `SMTP_HOST` | SMTP server host | localhost |
-| `SMTP_PORT` | SMTP server port | 1025 |
-| `SMTP_USER` | SMTP username | - |
-| `SMTP_PASS` | SMTP password | - |
-| `SMTP_FROM` | Email sender address | noreply@bustandchill.local |
+| Variable              | Description                          | Par défaut                 |
+| --------------------- | ------------------------------------ | -------------------------- |
+| `DATABASE_URL`        | Chaîne de connexion PostgreSQL       | Requis                     |
+| `JWT_SECRET`          | Secret pour la signature JWT         | Requis                     |
+| `NEXT_PUBLIC_APP_URL` | URL de l'application pour les emails | http://localhost:3000      |
+| `SMTP_HOST`           | Hôte du serveur SMTP                 | localhost                  |
+| `SMTP_PORT`           | Port du serveur SMTP                 | 1025                       |
+| `SMTP_USER`           | Nom d'utilisateur SMTP               | -                          |
+| `SMTP_PASS`           | Mot de passe SMTP                    | -                          |
+| `SMTP_FROM`           | Adresse email de l'expéditeur        | noreply@bustandchill.local |
 
-## Troubleshooting
+## Dépannage
 
-### "Cannot connect to database"
+### "Impossible de se connecter à la base de données"
 
-- Ensure PostgreSQL is running
-- Check `DATABASE_URL` in `.env`
-- Run `npm run db:push` to create tables
+- Assurez-vous que PostgreSQL est en cours d'exécution
+- Vérifiez `DATABASE_URL` dans `.env`
+- Exécutez `npm run db:push` pour créer les tables
 
-### "Email verification not working"
+### "La vérification d'email ne fonctionne pas"
 
-- Start MailHog: `docker run -d -p 1025:1025 -p 8025:8025 mailhog/mailhog`
-- Check console logs for verification URL
-- Ensure `SMTP_HOST` and `SMTP_PORT` are correct
+- Démarrez MailHog : `docker run -d -p 1025:1025 -p 8025:8025 mailhog/mailhog`
+- Vérifiez les logs de la console pour l'URL de vérification
+- Assurez-vous que `SMTP_HOST` et `SMTP_PORT` sont corrects
 
-### "Socket.IO not connecting"
+### "Socket.IO ne se connecte pas"
 
-- Ensure you're using `npm run dev` (custom server)
-- Check browser console for connection errors
-- Verify `NEXT_PUBLIC_APP_URL` matches your server URL
+- Assurez-vous d'utiliser `npm run dev` (serveur personnalisé)
+- Vérifiez la console du navigateur pour les erreurs de connexion
+- Vérifiez que `NEXT_PUBLIC_APP_URL` correspond à l'URL de votre serveur
 
-### "Game not updating in real-time"
+### "Le jeu ne se met pas à jour en temps réel"
 
-- Check Socket.IO connection status in dashboard
-- Ensure both browsers are logged in and connected
-- Check server console for socket errors
+- Vérifiez le statut de la connexion Socket.IO dans le dashboard
+- Assurez-vous que les deux navigateurs sont connectés et connectés
+- Vérifiez la console du serveur pour les erreurs de socket
 
-## License
+## Déploiement en Production
 
-MIT License - Feel free to use this project for learning and fun!
+Pour déployer l'application en production, consultez le guide complet :
+
+👉 **[README_DEPLOY.md](./README_DEPLOY.md)** - Guide de déploiement sur Railway
+
+## Licence
+
+MIT License - N'hésitez pas à utiliser ce projet pour apprendre et vous amuser !
 
 ---
 
-Made with ❤️ and 🃏
+Fait avec ❤️ et 🃏
