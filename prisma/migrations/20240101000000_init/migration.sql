@@ -150,4 +150,3 @@ ALTER TABLE "game_histories" ADD CONSTRAINT "game_histories_userId_fkey" FOREIGN
 
 -- AddForeignKey
 ALTER TABLE "game_histories" ADD CONSTRAINT "game_histories_gameId_fkey" FOREIGN KEY ("gameId") REFERENCES "games"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-

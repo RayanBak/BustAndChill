@@ -39,7 +39,21 @@ async function checkAndResolve() {
         console.log('📋 Les tables n\'existent pas, marquage de la migration comme rolled-back...');
         await prisma.$disconnect();
         
-        execSync('npx prisma migrate resolve --rolled-back 20240101000000_init', { stdio: 'inherit' });
+        try {
+          execSync('npx prisma migrate resolve --rolled-back 20240101000000_init', { stdio: 'inherit' });
+        } catch (resolveError) {
+          // Si la résolution échoue, essayer de supprimer l'entrée de la table _prisma_migrations
+          console.log('🔄 Tentative de nettoyage manuel de la table _prisma_migrations...');
+          const prisma2 = new PrismaClient();
+          try {
+            await prisma2.$executeRawUnsafe(`DELETE FROM "_prisma_migrations" WHERE migration_name = '20240101000000_init'`);
+            await prisma2.$disconnect();
+            console.log('✅ Entrée de migration supprimée');
+          } catch (cleanError) {
+            await prisma2.$disconnect();
+            console.log('⚠️  Impossible de nettoyer, continuons quand même...');
+          }
+        }
         
         // Réessayer d'appliquer les migrations
         console.log('📦 Nouvelle tentative d\'application des migrations...');
