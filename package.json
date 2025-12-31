@@ -6,7 +6,7 @@
     "dev": "node server.js",
     "dev:next": "next dev",
     "build": "next build",
-    "db:deploy": "prisma migrate deploy && prisma generate",
+    "db:deploy": "node scripts/fix-migrations.js",
     "start": "cross-env NODE_ENV=production npm run db:deploy && node server.js",
     "postinstall": "prisma generate",
     "lint": "eslint",
