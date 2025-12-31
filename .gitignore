@@ -36,7 +36,7 @@ yarn-error.log*
 next-env.d.ts
 
 # prisma
-/prisma/migrations
+# /prisma/migrations - DO NOT IGNORE: migrations must be committed for production
 
 # IDE
 .vscode/
