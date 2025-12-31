@@ -153,6 +153,16 @@ function PlayingCard({
   animate?: boolean;
 }) {
   const soundPlayedRef = useRef<Set<string>>(new Set());
+  const [isMobile, setIsMobile] = useState(false);
+  
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   
   useEffect(() => {
     if (animate && delay >= 0) {
@@ -170,8 +180,10 @@ function PlayingCard({
   }, [animate, delay, card]);
   
   const isHidden = 'hidden' in card && card.hidden;
-  const w = small ? 36 : 52;
-  const h = small ? 52 : 74;
+  // Ajuster la taille selon l'écran
+  const actualSmall = small || isMobile;
+  const w = actualSmall ? 32 : 52;
+  const h = actualSmall ? 48 : 74;
   
   const suits: Record<string, { symbol: string; color: string }> = {
     hearts: { symbol: '♥', color: '#dc2626' },
@@ -295,6 +307,17 @@ function PlayerSpot({
   phase: string;
   isDealing?: boolean;
 }) {
+  const [isMobile, setIsMobile] = useState(false);
+  
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+  
   const showCards = !['lobby', 'betting'].includes(phase);
   const showResult = phase === 'settlement';
   const bet = player.hasBet ? player.bet : currentBet;
@@ -326,12 +349,12 @@ function PlayerSpot({
                 </div>
                 
                 {/* Cartes de la main */}
-                <div className="flex -space-x-3 mb-1">
+                <div className="flex -space-x-2 sm:-space-x-3 mb-1">
                   {hand.cards.map((card, i) => (
                     <PlayingCard 
                       key={i} 
                       card={card} 
-                      small 
+                      small={isMobile}
                       animate={isDealing}
                       delay={handIdx * 300 + i * 500}
                     />
@@ -400,14 +423,14 @@ function PlayerSpot({
       player.isCurrentTurn ? 'transform scale-110' : ''
     }`}>
       {/* Cartes du joueur */}
-      <div className="min-h-[70px] flex items-end justify-center mb-1">
+      <div className="min-h-[50px] sm:min-h-[70px] flex items-end justify-center mb-1">
         {hasCards && (
-          <div className="flex -space-x-4 transform hover:scale-105 transition-transform">
+          <div className="flex -space-x-2 sm:-space-x-4 transform hover:scale-105 transition-transform">
             {player.cards.map((card, i) => (
               <PlayingCard 
                 key={i} 
                 card={card} 
-                small 
+                small={isMobile}
                 animate={isDealing}
                 delay={i * 500}
               />
@@ -533,8 +556,25 @@ function FullscreenTable({
   const showDealerCards = !['lobby', 'betting'].includes(state.phase);
   // Toujours afficher la valeur du croupier si disponible (sauf carte cachée)
   const showDealerValue = state.dealer.value !== null && state.dealer.cards.length > 0;
+  const [isMobile, setIsMobile] = useState(false);
   
-  const canAct = state.phase === 'player_turn' && state.isMyTurn && myPlayer && !myPlayer.isBusted && !myPlayer.isStanding;
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+  
+  // Vérification stricte : doit être le tour du joueur ET être le joueur actuel
+  const canAct = state.phase === 'player_turn' && 
+                 state.isMyTurn && 
+                 state.currentPlayerId === myPlayer?.oderId &&
+                 myPlayer && 
+                 !myPlayer.isBusted && 
+                 !myPlayer.isStanding &&
+                 !myPlayer.hasBlackjack;
   const canDouble = canAct && myPlayer && myPlayer.cards.length === 2 && !myPlayer.hasDoubled && myPlayer.bet <= myPlayer.balance;
   const canSplit = canAct && myPlayer && myPlayer.cards.length === 2 && !myPlayer.isSplit && 
                    myPlayer.cards[0]?.rank === myPlayer.cards[1]?.rank && myPlayer.bet <= myPlayer.balance;
@@ -555,11 +595,11 @@ function FullscreenTable({
       background: 'linear-gradient(180deg, #0c0c0c 0%, #1a1a2e 50%, #0c0c0c 100%)',
     }}>
       {/* Header */}
-      <div className="flex-none h-14 bg-black/80 backdrop-blur-sm flex items-center justify-between px-6 border-b border-white/10">
-        <div className="flex items-center gap-4">
+      <div className="flex-none min-h-[56px] sm:h-14 bg-black/80 backdrop-blur-sm flex flex-col sm:flex-row items-start sm:items-center justify-between px-3 sm:px-6 py-2 sm:py-0 border-b border-white/10">
+        <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
           <button 
             onClick={() => { onLeave(); router.push('/dashboard'); }}
-            className={`transition-colors text-sm ${
+            className={`transition-colors text-xs sm:text-sm ${
               state.phase === 'player_turn' && state.isMyTurn
                 ? 'text-white/30 cursor-not-allowed'
                 : 'text-white/50 hover:text-white cursor-pointer'
@@ -569,14 +609,14 @@ function FullscreenTable({
           >
             ← Quitter
           </button>
-          <span className="text-white font-semibold">{state.name}</span>
-          <span className="text-white/40 text-sm">• Manche {state.currentRound}</span>
+          <span className="text-white font-semibold text-sm sm:text-base truncate max-w-[150px] sm:max-w-none">{state.name}</span>
+          <span className="text-white/40 text-xs sm:text-sm">• Manche {state.currentRound}</span>
         </div>
         
-        <div className="flex items-center gap-6">
-          {/* Historique joueur */}
+        <div className="flex items-center gap-2 sm:gap-6 flex-wrap">
+          {/* Historique joueur - masqué sur très petit écran */}
           {state.playerHistory && state.playerHistory.length > 0 && (
-            <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2">
               <span className="text-white/40 text-xs">Historique:</span>
               <PlayerHistory history={state.playerHistory} />
             </div>
@@ -584,7 +624,7 @@ function FullscreenTable({
           
           {/* Timer */}
           {timer !== null && (
-            <div className={`px-4 py-1.5 rounded-full text-sm font-bold ${
+            <div className={`px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-xs sm:text-sm font-bold ${
               timer <= 5 ? 'bg-red-500 text-white animate-pulse' : 'bg-amber-500 text-black'
             }`}>
               {timer}s
@@ -593,50 +633,53 @@ function FullscreenTable({
           
           {/* Solde */}
           <div className="flex items-center gap-2">
-            <span className="text-white/40 text-sm">Solde:</span>
-            <span className="text-emerald-400 font-bold text-lg">${myPlayer?.balance || 0}</span>
+            <span className="text-white/40 text-xs sm:text-sm">Solde:</span>
+            <span className="text-emerald-400 font-bold text-base sm:text-lg">${myPlayer?.balance || 0}</span>
           </div>
         </div>
       </div>
 
       {/* Zone de jeu */}
-      <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
+      <div className="flex-1 flex items-center justify-center p-2 sm:p-4 overflow-hidden">
         <div 
-          className="relative w-full max-w-4xl rounded-[80px]"
+          className="relative w-full max-w-4xl rounded-[40px] sm:rounded-[80px]"
           style={{
             aspectRatio: '16/9',
             background: 'radial-gradient(ellipse 100% 80% at 50% 100%, #0d7a41 0%, #0a6235 50%, #074a29 100%)',
-            border: '20px solid #4a3423',
+            border: '10px solid #4a3423',
             boxShadow: `
-              inset 0 0 80px rgba(0,0,0,0.5),
-              inset 0 -40px 60px rgba(0,0,0,0.3),
-              0 30px 80px rgba(0,0,0,0.8),
-              0 0 0 4px #2d1f14,
-              0 0 0 8px rgba(212,175,55,0.3)
+              inset 0 0 40px rgba(0,0,0,0.5),
+              inset 0 -20px 30px rgba(0,0,0,0.3),
+              0 15px 40px rgba(0,0,0,0.8),
+              0 0 0 2px #2d1f14,
+              0 0 0 4px rgba(212,175,55,0.3)
             `,
           }}
         >
           {/* Ligne de table */}
-          <div className="absolute inset-6 rounded-[60px] pointer-events-none" style={{
-            border: '3px solid rgba(212,175,55,0.15)',
+          <div className="absolute inset-3 sm:inset-6 rounded-[30px] sm:rounded-[60px] pointer-events-none" style={{
+            border: '2px solid rgba(212,175,55,0.15)',
           }} />
           
           {/* Zone croupier */}
-          <div className="absolute top-8 left-1/2 -translate-x-1/2 flex flex-col items-center">
-            <div className="bg-black/40 backdrop-blur-sm px-6 py-2 rounded-full mb-3 flex items-center gap-4">
-              <span className="text-amber-400/80 text-sm font-semibold uppercase tracking-wider">Croupier</span>
+          <div className="absolute top-2 sm:top-8 left-1/2 -translate-x-1/2 flex flex-col items-center">
+            <div className="bg-black/40 backdrop-blur-sm px-3 sm:px-6 py-1 sm:py-2 rounded-full mb-1 sm:mb-3 flex items-center gap-2 sm:gap-4">
+              <span className="text-amber-400/80 text-xs sm:text-sm font-semibold uppercase tracking-wider">Croupier</span>
               {state.dealerHistory && state.dealerHistory.length > 0 && (
-                <DealerHistory history={state.dealerHistory} />
+                <div className="hidden sm:block">
+                  <DealerHistory history={state.dealerHistory} />
+                </div>
               )}
             </div>
             
             {showDealerCards && state.dealer.cards.length > 0 ? (
               <div className="flex flex-col items-center">
-                <div className="flex -space-x-3 mb-3 transform hover:scale-105 transition-transform">
+                <div className="flex -space-x-2 sm:-space-x-3 mb-1 sm:mb-3 transform hover:scale-105 transition-transform">
                   {state.dealer.cards.map((card, i) => (
                     <PlayingCard 
                       key={i} 
                       card={card} 
+                      small={isMobile}
                       animate={state.phase === 'dealing' || state.phase === 'dealer_turn'}
                       delay={i * 500}
                     />
@@ -659,7 +702,7 @@ function FullscreenTable({
                   
                   if (displayValue !== null) {
                     return (
-                      <span className={`px-4 py-1.5 rounded-full text-sm font-bold shadow-lg transition-all ${
+                      <span className={`px-2 sm:px-4 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-bold shadow-lg transition-all ${
                         state.dealer.isBusted 
                           ? 'bg-gradient-to-r from-red-500 to-red-600 text-white' 
                           : isPartial
@@ -736,19 +779,19 @@ function FullscreenTable({
           </div>
           
           {/* Joueurs en arc */}
-          <div className="absolute bottom-6 left-0 right-0">
-            <div className="flex justify-center items-end gap-8 px-12">
+          <div className="absolute bottom-2 sm:bottom-6 left-0 right-0">
+            <div className="flex justify-center items-end gap-2 sm:gap-8 px-2 sm:px-12 overflow-x-auto">
               {state.players.map((player, idx) => {
                 const isMe = player.oderId === myPlayer?.oderId;
-                // Offset pour créer un effet d'arc
+                // Offset pour créer un effet d'arc (réduit sur mobile)
                 const offset = Math.abs(idx - (state.players.length - 1) / 2);
-                const yOffset = offset * 8;
+                const yOffset = offset * (isMobile ? 4 : 8);
                 
                 return (
                   <div 
                     key={player.oderId} 
                     style={{ marginBottom: yOffset }}
-                    className="transition-all duration-300"
+                    className="transition-all duration-300 flex-shrink-0"
                   >
                     <PlayerSpot
                       player={player}
@@ -791,22 +834,22 @@ function FullscreenTable({
         
         {/* Phase de mise */}
         {isBetting && (
-          <div className="p-4">
+          <div className="p-2 sm:p-4">
             <div className="max-w-3xl mx-auto">
               {/* Mise actuelle */}
-              <div className="text-center mb-4">
-                <span className="text-white/50 text-sm">Mise: </span>
-                <span className="text-3xl font-bold text-amber-400">${betAmount}</span>
-                <span className="text-white/30 text-sm ml-2">(min ${state.minBet} • max ${state.maxBet})</span>
+              <div className="text-center mb-2 sm:mb-4">
+                <span className="text-white/50 text-xs sm:text-sm">Mise: </span>
+                <span className="text-2xl sm:text-3xl font-bold text-amber-400">${betAmount}</span>
+                <span className="text-white/30 text-xs sm:text-sm ml-1 sm:ml-2 block sm:inline">(min ${state.minBet} • max ${state.maxBet})</span>
               </div>
               
               {/* Jetons */}
-              <div className="flex items-center justify-center gap-3 mb-4">
+              <div className="flex items-center justify-center gap-2 sm:gap-3 mb-2 sm:mb-4 overflow-x-auto pb-2">
                 {availableChips.map((chip) => (
                   <Chip
                     key={chip.value}
                     value={chip.value}
-                    size="lg"
+                    size={isMobile ? "md" : "lg"}
                     onClick={() => addChip(chip.value)}
                     disabled={betAmount + chip.value > (myPlayer?.balance || 0)}
                   />
@@ -814,17 +857,17 @@ function FullscreenTable({
               </div>
               
               {/* Actions */}
-              <div className="flex justify-center gap-4">
+              <div className="flex justify-center gap-2 sm:gap-4">
                 <button
                   onClick={() => setBetAmount(0)}
-                  className="px-8 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition-all"
+                  className="px-4 sm:px-8 py-2 sm:py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium text-sm sm:text-base transition-all"
                 >
                   Effacer
                 </button>
                 <button
                   onClick={() => onBet(betAmount)}
                   disabled={betAmount < state.minBet}
-                  className={`px-10 py-3 rounded-xl font-bold text-lg transition-all ${
+                  className={`px-6 sm:px-10 py-2 sm:py-3 rounded-xl font-bold text-sm sm:text-lg transition-all ${
                     betAmount >= state.minBet 
                       ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white shadow-lg shadow-emerald-500/30' 
                       : 'bg-white/10 text-white/30 cursor-not-allowed'
@@ -848,31 +891,47 @@ function FullscreenTable({
         {/* Actions de jeu */}
         {canAct && (
           <div className="p-4">
-            <div className="flex justify-center gap-4">
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-4">
               <button
-                onClick={onHit}
-                className="px-10 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white rounded-xl font-bold text-lg transition-all shadow-lg shadow-emerald-500/30"
+                onClick={() => {
+                  if (!canAct) return;
+                  onHit();
+                }}
+                disabled={!canAct}
+                className="px-6 py-2.5 sm:px-10 sm:py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm sm:text-lg transition-all shadow-lg shadow-emerald-500/30"
               >
                 🃏 Tirer
               </button>
               <button
-                onClick={onStand}
-                className="px-10 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 text-white rounded-xl font-bold text-lg transition-all shadow-lg shadow-red-500/30"
+                onClick={() => {
+                  if (!canAct) return;
+                  onStand();
+                }}
+                disabled={!canAct}
+                className="px-6 py-2.5 sm:px-10 sm:py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm sm:text-lg transition-all shadow-lg shadow-red-500/30"
               >
                 ✋ Rester
               </button>
               {canDouble && (
                 <button
-                  onClick={onDouble}
-                  className="px-8 py-3 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-purple-500/30"
+                  onClick={() => {
+                    if (!canAct) return;
+                    onDouble();
+                  }}
+                  disabled={!canAct}
+                  className="px-6 py-2.5 sm:px-8 sm:py-3 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm sm:text-base transition-all shadow-lg shadow-purple-500/30"
                 >
                   ⬆️ Doubler
                 </button>
               )}
               {canSplit && (
                 <button
-                  onClick={onSplit}
-                  className="px-8 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-500/30"
+                  onClick={() => {
+                    if (!canAct) return;
+                    onSplit();
+                  }}
+                  disabled={!canAct}
+                  className="px-6 py-2.5 sm:px-8 sm:py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm sm:text-base transition-all shadow-lg shadow-blue-500/30"
                 >
                   ✂️ Séparer
                 </button>

@@ -287,18 +287,40 @@ async function startDealingPhase(tableId) {
   addLog(state, null, 'dealing', 'Distribution des cartes...');
   
   const activePlayers = getActivePlayersForRound(state);
+  console.log(`🎴 Dealing cards to ${activePlayers.length} active players:`, activePlayers.map(p => p.username));
   
   // Deal 2 cards to each player
   for (let round = 0; round < 2; round++) {
     for (const player of activePlayers) {
       const card = state.shoe.shift();
-      player.cards.push(card);
+      if (!card) {
+        console.error('❌ No more cards in shoe!');
+        // Reshuffle
+        state.shoe = createShoe(6);
+        const newCard = state.shoe.shift();
+        player.cards.push(newCard);
+      } else {
+        player.cards.push(card);
+      }
       player.value = computeHandValue(player.cards);
+      console.log(`  🃏 Round ${round + 1}: ${player.username} got ${card?.rank || 'NO CARD'}${card ? getSuitSymbol(card.suit) : ''}, value: ${player.value}`);
     }
     // Dealer gets a card
     const dealerCard = state.shoe.shift();
-    state.dealer.cards.push(dealerCard);
-    state.dealer.value = computeHandValue(state.dealer.cards);
+    if (dealerCard) {
+      state.dealer.cards.push(dealerCard);
+      state.dealer.value = computeHandValue(state.dealer.cards);
+      console.log(`  🎩 Dealer got ${dealerCard.rank}${getSuitSymbol(dealerCard.suit)}`);
+    }
+  }
+  
+  // Vérification finale : tous les joueurs doivent avoir 2 cartes
+  for (const player of activePlayers) {
+    if (player.cards.length !== 2) {
+      console.error(`❌ ERROR: ${player.username} has ${player.cards.length} cards instead of 2!`);
+    } else {
+      console.log(`✅ ${player.username} has 2 cards: ${player.cards.map(c => `${c.rank}${getSuitSymbol(c.suit)}`).join(', ')} (value: ${player.value})`);
+    }
   }
   
   // Check for blackjacks
@@ -307,6 +329,7 @@ async function startDealingPhase(tableId) {
       player.hasBlackjack = true;
       player.isStanding = true;
       addLog(state, player.username, 'blackjack', 'BLACKJACK ! 🎉');
+      console.log(`🎉 ${player.username} has BLACKJACK!`);
     }
   }
   
@@ -701,10 +724,22 @@ async function handlePlayerHit(tableId, oderId) {
   }
   
   const activePlayers = getActivePlayersForRound(state);
+  
+  // Vérification stricte : le joueur doit être dans les joueurs actifs
+  const player = activePlayers.find(p => p.oderId === oderId);
+  if (!player) {
+    return { error: "Vous n'êtes pas un joueur actif" };
+  }
+  
   const currentPlayer = activePlayers[state.currentPlayerIndex];
   
   if (!currentPlayer || currentPlayer.oderId !== oderId) {
     return { error: "Ce n'est pas votre tour" };
+  }
+  
+  // Double vérification : le joueur ne doit pas avoir déjà fini son tour
+  if (player.isStanding || player.isBusted || player.hasBlackjack) {
+    return { error: "Vous avez déjà fini votre tour" };
   }
   
   // Handle split hands
@@ -805,10 +840,22 @@ async function handlePlayerStand(tableId, oderId) {
   }
   
   const activePlayers = getActivePlayersForRound(state);
+  
+  // Vérification stricte : le joueur doit être dans les joueurs actifs
+  const player = activePlayers.find(p => p.oderId === oderId);
+  if (!player) {
+    return { error: "Vous n'êtes pas un joueur actif" };
+  }
+  
   const currentPlayer = activePlayers[state.currentPlayerIndex];
   
   if (!currentPlayer || currentPlayer.oderId !== oderId) {
     return { error: "Ce n'est pas votre tour" };
+  }
+  
+  // Double vérification : le joueur ne doit pas avoir déjà fini son tour
+  if (player.isStanding || player.isBusted || player.hasBlackjack) {
+    return { error: "Vous avez déjà fini votre tour" };
   }
   
   // Handle split hands
@@ -870,10 +917,22 @@ async function handlePlayerDouble(tableId, oderId) {
   }
   
   const activePlayers = getActivePlayersForRound(state);
+  
+  // Vérification stricte : le joueur doit être dans les joueurs actifs
+  const player = activePlayers.find(p => p.oderId === oderId);
+  if (!player) {
+    return { error: "Vous n'êtes pas un joueur actif" };
+  }
+  
   const currentPlayer = activePlayers[state.currentPlayerIndex];
   
   if (!currentPlayer || currentPlayer.oderId !== oderId) {
     return { error: "Ce n'est pas votre tour" };
+  }
+  
+  // Double vérification : le joueur ne doit pas avoir déjà fini son tour
+  if (player.isStanding || player.isBusted || player.hasBlackjack) {
+    return { error: "Vous avez déjà fini votre tour" };
   }
   
   if (currentPlayer.cards.length !== 2) {
@@ -927,10 +986,22 @@ async function handlePlayerSplit(tableId, oderId) {
   }
   
   const activePlayers = getActivePlayersForRound(state);
+  
+  // Vérification stricte : le joueur doit être dans les joueurs actifs
+  const player = activePlayers.find(p => p.oderId === oderId);
+  if (!player) {
+    return { error: "Vous n'êtes pas un joueur actif" };
+  }
+  
   const currentPlayer = activePlayers[state.currentPlayerIndex];
   
   if (!currentPlayer || currentPlayer.oderId !== oderId) {
     return { error: "Ce n'est pas votre tour" };
+  }
+  
+  // Double vérification : le joueur ne doit pas avoir déjà fini son tour
+  if (player.isStanding || player.isBusted || player.hasBlackjack) {
+    return { error: "Vous avez déjà fini votre tour" };
   }
   
   if (currentPlayer.cards.length !== 2) {
@@ -1196,11 +1267,16 @@ function broadcastTableState(tableId) {
     console.log(`⚠️ broadcastTableState: no state for table ${tableId}`);
     return;
   }
-  console.log(`📢 Broadcasting state for table ${tableId}, phase: ${state.phase}, players: ${state.players.length}`);
+  console.log(`📢 Broadcasting state for table ${tableId}, phase: ${state.phase}, players: ${state.players.length}, currentPlayerIndex: ${state.currentPlayerIndex}`);
   
   const activePlayers = getActivePlayersForRound(state);
   const currentPlayer = activePlayers[state.currentPlayerIndex];
   const currentPlayerId = currentPlayer?.oderId || null;
+  
+  // Log pour debug
+  if (state.phase === 'player_turn' && currentPlayer) {
+    console.log(`🎯 Current player: ${currentPlayer.username} (${currentPlayerId}), active players: ${activePlayers.map(p => p.username).join(', ')}`);
+  }
   
   // Dealer cards: hide second card during player_turn
   const showDealerHole = ['dealer_turn', 'settlement'].includes(state.phase);

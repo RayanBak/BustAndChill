@@ -258,3 +258,40 @@ button {
   backface-visibility: hidden;
   transform: translateZ(0);
 }
+
+/* Responsive mobile optimizations */
+@media (max-width: 640px) {
+  /* Réduire les espacements sur mobile */
+  .game-table {
+    border-radius: 16px;
+    border-width: 2px;
+  }
+  
+  /* Cartes plus petites sur mobile */
+  .playing-card {
+    font-size: 0.75rem;
+  }
+  
+  /* Boutons plus accessibles sur mobile */
+  button {
+    min-height: 44px; /* Taille minimale pour le touch */
+    min-width: 44px;
+  }
+  
+  /* Améliorer la lisibilité sur petit écran */
+  body {
+    font-size: 14px;
+  }
+}
+
+/* Amélioration pour très petits écrans */
+@media (max-width: 375px) {
+  .game-table {
+    border-radius: 12px;
+  }
+  
+  button {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+}
