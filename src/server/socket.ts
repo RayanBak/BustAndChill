@@ -116,7 +116,7 @@ export function initializeSocketServer(httpServer: HTTPServer): SocketIOServer {
           include: {
             players: {
               include: { user: true },
-              orderBy: { turnOrder: 'asc' },
+              orderBy: { seatIndex: 'asc' },
             },
           },
         });
