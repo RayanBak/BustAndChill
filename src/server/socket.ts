@@ -131,7 +131,7 @@ export function initializeSocketServer(httpServer: HTTPServer): SocketIOServer {
           return;
         }
         
-        if (game.status !== 'waiting') {
+        if (game.phase !== 'lobby') {
           socket.emit('game:error', 'Game already started');
           return;
         }
@@ -157,9 +157,8 @@ export function initializeSocketServer(httpServer: HTTPServer): SocketIOServer {
         await prisma.game.update({
           where: { id: gameId },
           data: {
-            status: 'in_progress',
+            phase: 'betting',
             startedAt: new Date(),
-            deckJson: serializeDeck(gameState.deck),
           },
         });
         
@@ -207,21 +206,9 @@ export function initializeSocketServer(httpServer: HTTPServer): SocketIOServer {
         
         activeGames.set(gameId, gameState);
         
-        // Record move
-        const currentPlayer = gameState.players.find((p) => p.oderId === user.userId);
-        await prisma.move.create({
-          data: {
-            gameId,
-            oderId: user.userId,
-            action,
-            cardDrawn: action === 'hit' && currentPlayer
-              ? JSON.stringify(currentPlayer.cards[currentPlayer.cards.length - 1])
-              : null,
-          },
-        });
-        
-        // Note: Hands are stored in memory during gameplay
-        // GameHistory is used to store completed rounds
+        // Note: Moves are tracked in memory during gameplay
+        // GameHistory is used to store completed rounds in the database
+        // This file is not used by server.js (which has its own Socket.IO implementation)
         
         // Check if game is finished
         if (gameState.status === 'finished') {
@@ -280,7 +267,7 @@ async function broadcastLobbyState(gameId: string) {
   
   const lobbyState = {
     gameId: game.id,
-    status: game.status,
+    phase: game.phase,
     hostId: game.hostUserId,
     hostUsername: game.host.username,
     maxPlayers: game.maxPlayers,
@@ -288,7 +275,7 @@ async function broadcastLobbyState(gameId: string) {
       oderId: p.oderId,
       username: p.user.username,
       seatIndex: p.seatIndex,
-      isReady: p.isReady,
+      isSittingOut: p.isSittingOut,
     })),
   };
   
@@ -354,10 +341,10 @@ function startLobbyTimer(gameId: string) {
       include: { players: true },
     });
     
-    if (game && game.status === 'waiting' && game.players.length < 2) {
+    if (game && game.phase === 'lobby' && game.players.length < 2) {
       await prisma.game.update({
         where: { id: gameId },
-        data: { status: 'cancelled' },
+        data: { isOpen: false },
       });
       
       io?.to(`game:${gameId}`).emit('game:cancelled', 'Lobby timeout - not enough players');
