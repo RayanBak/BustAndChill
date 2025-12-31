@@ -163,31 +163,9 @@ export function initializeSocketServer(httpServer: HTTPServer): SocketIOServer {
           },
         });
         
-        // Create hands in database
-        for (const playerHand of gameState.players) {
-          await prisma.hand.upsert({
-            where: {
-              gameId_oderId: {
-                gameId,
-                oderId: playerHand.oderId,
-              },
-            },
-            update: {
-              cardsJson: serializeCards(playerHand.cards),
-              totalValue: playerHand.totalValue,
-              isBusted: playerHand.isBusted,
-              isStanding: playerHand.isStanding,
-            },
-            create: {
-              gameId,
-              oderId: playerHand.oderId,
-              cardsJson: serializeCards(playerHand.cards),
-              totalValue: playerHand.totalValue,
-              isBusted: playerHand.isBusted,
-              isStanding: playerHand.isStanding,
-            },
-          });
-        }
+        // Note: Hands are stored in memory during gameplay
+        // GameHistory is used to store completed rounds
+        // This file is not used by server.js (which has its own Socket.IO implementation)
         
         // Broadcast game state to all players
         broadcastGameState(gameId);
@@ -242,20 +220,8 @@ export function initializeSocketServer(httpServer: HTTPServer): SocketIOServer {
           },
         });
         
-        // Update hand in database
-        if (currentPlayer) {
-          await prisma.hand.update({
-            where: {
-              gameId_oderId: { gameId, oderId: user.userId },
-            },
-            data: {
-              cardsJson: serializeCards(currentPlayer.cards),
-              totalValue: currentPlayer.totalValue,
-              isBusted: currentPlayer.isBusted,
-              isStanding: currentPlayer.isStanding,
-            },
-          });
-        }
+        // Note: Hands are stored in memory during gameplay
+        // GameHistory is used to store completed rounds
         
         // Check if game is finished
         if (gameState.status === 'finished') {
@@ -454,49 +420,19 @@ async function finalizeGame(gameId: string, gameState: GameState) {
   clearGameTimer(gameId);
   clearTurnTimer(gameId);
   
-  // Update database
-  await prisma.game.update({
-    where: { id: gameId },
-    data: {
-      status: 'finished',
-      endedAt: new Date(),
-    },
-  });
+        // Update database
+        await prisma.game.update({
+          where: { id: gameId },
+          data: {
+            phase: 'settlement',
+            endedAt: new Date(),
+            isOpen: false,
+          },
+        });
   
-  // Update all hands
-  for (const player of gameState.players) {
-    await prisma.hand.update({
-      where: {
-        gameId_oderId: { gameId, oderId: player.oderId },
-      },
-      data: {
-        cardsJson: serializeCards(player.cards),
-        totalValue: player.totalValue,
-        isBusted: player.isBusted,
-        isStanding: player.isStanding,
-      },
-    });
-    
-    // Mark player as finished
-    await prisma.gamePlayer.update({
-      where: {
-        gameId_oderId: { gameId, oderId: player.oderId },
-      },
-      data: {
-        hasFinishedTurn: true,
-      },
-    });
-  }
-  
-  // Create score record
-  await prisma.score.create({
-    data: {
-      gameId,
-      winnerUserId: gameState.winners.length === 1 ? gameState.winners[0] : null,
-      winnersJson: gameState.winners.length > 1 ? JSON.stringify(gameState.winners) : null,
-      pointsJson: JSON.stringify(gameState.pointsMap),
-    },
-  });
+  // Store game history for completed rounds
+  // Note: This file is not used by server.js (which has its own Socket.IO implementation)
+  // The actual game state is stored in GameHistory by server.js
   
   // Clean up memory
   activeGames.delete(gameId);

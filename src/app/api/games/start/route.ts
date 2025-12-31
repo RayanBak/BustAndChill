@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    if (game.status !== 'waiting') {
+    if (game.phase !== 'lobby') {
       return NextResponse.json(
         { error: 'Game has already started or ended' },
         { status: 400 }

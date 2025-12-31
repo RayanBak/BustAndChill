@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    if (game.status !== 'waiting') {
+    if (game.phase !== 'lobby') {
       return NextResponse.json(
         { error: 'Game is not accepting new players' },
         { status: 400 }
@@ -69,7 +69,8 @@ export async function POST(request: NextRequest) {
       where: {
         oderId: auth.userId,
         game: {
-          status: { in: ['waiting', 'in_progress'] },
+          phase: { in: ['lobby', 'betting', 'dealing', 'player_turn', 'dealer_turn'] },
+          isOpen: true,
           id: { not: gameId },
         },
       },
@@ -95,8 +96,6 @@ export async function POST(request: NextRequest) {
         gameId: game.id,
         oderId: auth.userId,
         seatIndex: nextSeat,
-        turnOrder: nextSeat,
-        isReady: false,
       },
     });
     

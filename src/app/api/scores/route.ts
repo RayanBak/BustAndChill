@@ -13,7 +13,11 @@ export async function GET() {
       );
     }
     
-    const scores = await prisma.score.findMany({
+    // Utiliser GameHistory à la place de Score
+    const histories = await prisma.gameHistory.findMany({
+      where: {
+        oderId: auth.userId,
+      },
       include: {
         game: {
           select: {
@@ -22,7 +26,7 @@ export async function GET() {
             endedAt: true,
           },
         },
-        winner: {
+        user: {
           select: {
             id: true,
             username: true,
@@ -37,33 +41,36 @@ export async function GET() {
       take: 50,
     });
     
-    // Parse JSON fields and format response
-    const formattedScores = scores.map((score) => {
-      let winners: string[] = [];
-      let points: Record<string, number> = {};
+    // Formater la réponse
+    const formattedScores = histories.map((history) => {
+      let playerCards: any[] = [];
+      let dealerCards: any[] = [];
       
       try {
-        if (score.winnersJson) {
-          winners = JSON.parse(score.winnersJson);
-        } else if (score.winnerUserId) {
-          winners = [score.winnerUserId];
+        if (history.playerCards) {
+          playerCards = JSON.parse(history.playerCards);
         }
-        
-        if (score.pointsJson) {
-          points = JSON.parse(score.pointsJson);
+        if (history.dealerCards) {
+          dealerCards = JSON.parse(history.dealerCards);
         }
       } catch {
         // Ignore parse errors
       }
       
       return {
-        id: score.id,
-        gameId: score.gameId,
-        winner: score.winner,
-        winners,
-        points,
-        createdAt: score.createdAt,
-        game: score.game,
+        id: history.id,
+        gameId: history.gameId,
+        round: history.round,
+        bet: history.bet,
+        result: history.result,
+        payout: history.payout,
+        playerValue: history.playerValue,
+        dealerValue: history.dealerValue,
+        playerCards,
+        dealerCards,
+        user: history.user,
+        createdAt: history.createdAt,
+        game: history.game,
       };
     });
     

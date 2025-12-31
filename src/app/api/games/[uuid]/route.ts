@@ -44,7 +44,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           },
           orderBy: { seatIndex: 'asc' },
         },
-        hands: {
+        histories: {
           include: {
             user: {
               select: {
@@ -53,17 +53,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
               },
             },
           },
-        },
-        scores: {
-          include: {
-            winner: {
-              select: {
-                id: true,
-                username: true,
-              },
-            },
-          },
           orderBy: { round: 'desc' },
+          take: 10, // Limiter à 10 dernières parties
         },
       },
     });
@@ -83,13 +74,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       success: true,
       game: {
         id: game.id,
-        status: game.status,
+        name: game.name,
+        phase: game.phase,
+        visibility: game.visibility,
         host: game.host,
         maxPlayers: game.maxPlayers,
         minBet: game.minBet,
         maxBet: game.maxBet,
         currentRound: game.currentRound,
-        currentTurnIndex: game.currentTurnIndex,
+        isOpen: game.isOpen,
         createdAt: game.createdAt,
         startedAt: game.startedAt,
         endedAt: game.endedAt,
@@ -99,14 +92,24 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           firstname: p.user.firstname,
           lastname: p.user.lastname,
           seatIndex: p.seatIndex,
-          turnOrder: p.turnOrder,
-          isReady: p.isReady,
-          hasFinishedTurn: p.hasFinishedTurn,
+          isSittingOut: p.isSittingOut,
           balance: p.user.balance,
           currentBet: p.currentBet,
+          sessionWinnings: p.sessionWinnings,
         })),
-        hands: game.status === 'finished' ? game.hands : game.hands.filter((h) => h.oderId === auth.userId),
-        scores: game.scores,
+        histories: game.histories.map((h) => ({
+          id: h.id,
+          round: h.round,
+          bet: h.bet,
+          result: h.result,
+          payout: h.payout,
+          playerValue: h.playerValue,
+          dealerValue: h.dealerValue,
+          playerCards: h.playerCards ? JSON.parse(h.playerCards) : [],
+          dealerCards: h.dealerCards ? JSON.parse(h.dealerCards) : [],
+          username: h.user.username,
+          createdAt: h.createdAt,
+        })),
         isPlayer,
         isHost,
       },
