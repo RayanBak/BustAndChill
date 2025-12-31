@@ -1,26 +1,260 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --casino-emerald: #047857;
+  --casino-dark: #0f172a;
+  --casino-gold: #fbbf24;
+  --casino-cream: #fef3c7;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+  min-height: 100vh;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Table de jeu élégante */
+.game-table {
+  background: linear-gradient(145deg, #047857 0%, #065f46 50%, #047857 100%);
+  border: 3px solid rgba(251, 191, 36, 0.6);
+  border-radius: 24px;
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.6),
+    inset 0 2px 4px rgba(255, 255, 255, 0.1),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.game-table::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(ellipse at center, rgba(255,255,255,0.05) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Animation de distribution des cartes - plus lente et fluide */
+@keyframes cardDeal {
+  0% {
+    transform: translateX(-120px) translateY(-60px) rotate(-20deg) scale(0.7);
+    opacity: 0;
+  }
+  40% {
+    transform: translateX(10px) translateY(-15px) rotate(5deg) scale(1.08);
+    opacity: 0.9;
+  }
+  70% {
+    transform: translateX(-5px) translateY(-5px) rotate(-2deg) scale(1.02);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0) translateY(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes cardSlide {
+  0% {
+    transform: translateY(-20px) scale(0.95);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.card-animate {
+  animation: cardSlide 0.4s ease-out forwards;
+}
+
+/* Animation de flip de carte */
+@keyframes cardFlip {
+  0% {
+    transform: rotateY(180deg);
+  }
+  100% {
+    transform: rotateY(0deg);
+  }
+}
+
+/* Bouton principal doré */
+.btn-gold {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #0f172a;
+  font-weight: 700;
+  border: none;
+  box-shadow: 0 4px 14px rgba(251, 191, 36, 0.4);
+  transition: all 0.2s ease;
+}
+
+.btn-gold:hover {
+  background: linear-gradient(135deg, #fcd34d 0%, #fbbf24 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(251, 191, 36, 0.5);
+}
+
+.btn-gold:active {
+  transform: translateY(0);
+}
+
+/* Effet de lueur */
+.glow-gold {
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.5);
+}
+
+.glow-green {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+}
+
+.glow-red {
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+}
+
+/* Jeton de casino */
+.chip {
+  position: relative;
+  border-radius: 50%;
+  box-shadow: 
+    0 4px 6px rgba(0, 0, 0, 0.3),
+    inset 0 2px 4px rgba(255, 255, 255, 0.3),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.chip:hover {
+  transform: scale(1.1) translateY(-2px);
+  box-shadow: 
+    0 8px 12px rgba(0, 0, 0, 0.4),
+    inset 0 2px 4px rgba(255, 255, 255, 0.3),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.chip.selected {
+  transform: scale(1.15);
+  box-shadow: 
+    0 0 0 3px #fbbf24,
+    0 8px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Animations subtiles */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Glass morphism */
+.glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-dark {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Cartes à jouer */
+.playing-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease;
+}
+
+.playing-card:hover {
+  transform: translateY(-4px);
+}
+
+/* Badge de résultat */
+.result-win {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.result-lose {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+}
+
+.result-push {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+}
+
+/* Scrollbar personnalisée */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(251, 191, 36, 0.5);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(251, 191, 36, 0.7);
+}
+
+/* Transitions fluides pour tous les éléments */
+* {
+  transition-property: transform, opacity, background-color, border-color, color;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
+
+/* Amélioration de la fluidité des animations */
+@keyframes smoothFade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.smooth-fade {
+  animation: smoothFade 0.3s ease-out;
+}
+
+/* Performance - GPU acceleration */
+.playing-card,
+.chip,
+button {
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }

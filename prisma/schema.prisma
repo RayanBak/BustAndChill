@@ -1,0 +1,152 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(uuid())
+  firstname       String
+  lastname        String
+  email           String    @unique
+  username        String    @unique
+  passwordHash    String
+  emailVerifiedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  balance         Int       @default(1000)
+  avatarUrl       String?
+  bio             String?
+
+  // Stats
+  gamesPlayed     Int       @default(0)
+  gamesWon        Int       @default(0)
+  totalWinnings   Int       @default(0)
+  totalLosses     Int       @default(0)
+  blackjackCount  Int       @default(0)
+  bestStreak      Int       @default(0)
+  currentStreak   Int       @default(0)
+
+  // Relations
+  emailVerificationTokens EmailVerificationToken[]
+  hostedGames             Game[]                   @relation("GameHost")
+  gamePlayers             GamePlayer[]
+  gameHistories           GameHistory[]
+  
+  // Friends
+  sentFriendRequests     Friendship[] @relation("FriendshipSender")
+  receivedFriendRequests Friendship[] @relation("FriendshipReceiver")
+
+  @@map("users")
+}
+
+model Friendship {
+  id         String           @id @default(uuid())
+  senderId   String
+  receiverId String
+  status     FriendshipStatus @default(pending)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  sender   User @relation("FriendshipSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("FriendshipReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+  @@map("friendships")
+}
+
+enum FriendshipStatus {
+  pending
+  accepted
+  rejected
+  blocked
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("email_verification_tokens")
+}
+
+enum GamePhase {
+  lobby
+  betting
+  dealing
+  player_turn
+  dealer_turn
+  settlement
+}
+
+enum TableVisibility {
+  public
+  private
+}
+
+model Game {
+  id          String          @id @default(uuid())
+  name        String          @default("Table de Blackjack")
+  phase       GamePhase       @default(lobby)
+  visibility  TableVisibility @default(public)
+  hostUserId  String
+  maxPlayers  Int             @default(5)
+  minBet      Int             @default(10)
+  maxBet      Int             @default(500)
+  currentRound Int            @default(0)
+  isOpen      Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  startedAt   DateTime?
+  endedAt     DateTime?
+
+  host      User          @relation("GameHost", fields: [hostUserId], references: [id])
+  players   GamePlayer[]
+  histories GameHistory[]
+
+  @@map("games")
+}
+
+model GamePlayer {
+  id            String   @id @default(uuid())
+  gameId        String
+  oderId        String   @map("userId")
+  seatIndex     Int
+  joinedAt      DateTime @default(now())
+  isSittingOut  Boolean  @default(false)
+  currentBet    Int      @default(0)
+  sessionWinnings Int    @default(0)
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [oderId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, oderId])
+  @@unique([gameId, seatIndex])
+  @@map("game_players")
+}
+
+model GameHistory {
+  id            String   @id @default(uuid())
+  oderId        String   @map("userId")
+  gameId        String
+  round         Int
+  bet           Int
+  result        String   // 'win', 'lose', 'push', 'blackjack'
+  payout        Int
+  playerCards   String   // JSON
+  dealerCards   String   // JSON
+  playerValue   Int
+  dealerValue   Int
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [oderId], references: [id], onDelete: Cascade)
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@map("game_histories")
+}
