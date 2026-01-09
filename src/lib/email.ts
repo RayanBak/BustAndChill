@@ -252,7 +252,9 @@ export async function sendVerificationEmail(
     console.log('✅ [EMAIL] Réponse SMTP:', info.response || 'Pas de réponse');
     console.log('✅ [EMAIL] Acceptés:', info.accepted || []);
     console.log('✅ [EMAIL] Rejetés:', info.rejected || []);
-    console.log('✅ [EMAIL] Pending:', info.pending || []);
+    if ('pending' in info) {
+      console.log('✅ [EMAIL] Pending:', (info as any).pending || []);
+    }
     
     // En développement, afficher aussi l'URL pour faciliter les tests
     if (!isProduction) {
