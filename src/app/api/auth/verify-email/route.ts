@@ -7,10 +7,9 @@ export async function GET(request: NextRequest) {
     const token = searchParams.get('token');
     
     if (!token) {
-      return NextResponse.json(
-        { error: 'Token de vérification requis' },
-        { status: 400 }
-      );
+      // Rediriger vers la page de login avec un message d'erreur
+      const loginUrl = new URL('/login?error=missing_token', request.url);
+      return NextResponse.redirect(loginUrl);
     }
     
     // Find token
@@ -20,10 +19,9 @@ export async function GET(request: NextRequest) {
     });
     
     if (!verificationToken) {
-      return NextResponse.json(
-        { error: 'Token de vérification invalide ou expiré' },
-        { status: 400 }
-      );
+      // Rediriger vers la page de login avec un message d'erreur
+      const loginUrl = new URL('/login?error=invalid_token', request.url);
+      return NextResponse.redirect(loginUrl);
     }
     
     // Check expiration
@@ -33,19 +31,16 @@ export async function GET(request: NextRequest) {
         where: { id: verificationToken.id },
       });
       
-      return NextResponse.json(
-        { error: 'Le token de vérification a expiré. Veuillez vous réinscrire.' },
-        { status: 400 }
-      );
+      // Rediriger vers la page de login avec un message d'erreur
+      const loginUrl = new URL('/login?error=expired_token', request.url);
+      return NextResponse.redirect(loginUrl);
     }
     
     // Check if already verified
     if (verificationToken.user.emailVerifiedAt) {
-      return NextResponse.json({
-        success: true,
-        message: 'Email déjà vérifié. Vous pouvez vous connecter.',
-        alreadyVerified: true,
-      });
+      // Rediriger vers login avec un message indiquant que c'est déjà vérifié
+      const loginUrl = new URL('/login?verified=already', request.url);
+      return NextResponse.redirect(loginUrl);
     }
     
     // Verify email
@@ -59,17 +54,15 @@ export async function GET(request: NextRequest) {
       where: { id: verificationToken.id },
     });
     
-    return NextResponse.json({
-      success: true,
-      message: 'Email vérifié avec succès ! Vous pouvez maintenant vous connecter.',
-    });
+    // Rediriger vers la page de login avec un message de succès
+    const loginUrl = new URL('/login?verified=1', request.url);
+    return NextResponse.redirect(loginUrl);
     
   } catch (error) {
     console.error('Email verification error:', error);
-    return NextResponse.json(
-      { error: 'Échec de la vérification de l\'email. Veuillez réessayer.' },
-      { status: 500 }
-    );
+    // Rediriger vers la page de login avec un message d'erreur
+    const loginUrl = new URL('/login?error=verification_failed', request.url);
+    return NextResponse.redirect(loginUrl);
   }
 }
 

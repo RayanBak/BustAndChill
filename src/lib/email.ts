@@ -185,9 +185,17 @@ export async function sendVerificationEmail(
   console.log('📧 [EMAIL] Nom d\'utilisateur:', username);
   
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  const verificationUrl = `${appUrl}/verify-email?token=${token}`;
+  // Point directement vers l'API pour une vérification immédiate
+  const verificationUrl = `${appUrl}/api/auth/verify-email?token=${token}`;
   console.log('📧 [EMAIL] URL de vérification:', verificationUrl);
   console.log('📧 [EMAIL] APP_URL configuré:', appUrl);
+  
+  // Vérification importante : en production, l'URL ne doit PAS être localhost
+  if (process.env.NODE_ENV === 'production' && appUrl.includes('localhost')) {
+    console.error('❌ [EMAIL] ERREUR CRITIQUE: NEXT_PUBLIC_APP_URL pointe vers localhost en production !');
+    console.error('❌ [EMAIL] Les emails contiendront des liens invalides.');
+    console.error('❌ [EMAIL] ACTION REQUISE: Configurez NEXT_PUBLIC_APP_URL sur Railway avec votre URL de production');
+  }
   
   const mjmlTemplate = verifyEmailMjml(username, verificationUrl);
   const { html, errors } = mjml2html(mjmlTemplate);

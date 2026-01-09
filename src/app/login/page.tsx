@@ -1,23 +1,52 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthContext } from '@/hooks/useAuth';
 
-export default function LoginPage() {
+function LoginContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login, user, isLoading: authLoading } = useAuthContext();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (!authLoading && user) {
       router.push('/dashboard');
     }
   }, [user, authLoading, router]);
+
+  // Gérer les messages de vérification d'email depuis l'URL
+  useEffect(() => {
+    const verified = searchParams.get('verified');
+    const errorParam = searchParams.get('error');
+    
+    if (verified === '1') {
+      setSuccess('✅ Email vérifié avec succès ! Vous pouvez maintenant vous connecter.');
+      // Nettoyer l'URL
+      router.replace('/login', { scroll: false });
+    } else if (verified === 'already') {
+      setSuccess('ℹ️ Votre email est déjà vérifié. Vous pouvez vous connecter.');
+      router.replace('/login', { scroll: false });
+    } else if (errorParam === 'missing_token') {
+      setError('Token de vérification manquant. Veuillez utiliser le lien reçu par email.');
+      router.replace('/login', { scroll: false });
+    } else if (errorParam === 'invalid_token') {
+      setError('Token de vérification invalide ou expiré. Veuillez vous réinscrire.');
+      router.replace('/login', { scroll: false });
+    } else if (errorParam === 'expired_token') {
+      setError('Le token de vérification a expiré. Veuillez vous réinscrire.');
+      router.replace('/login', { scroll: false });
+    } else if (errorParam === 'verification_failed') {
+      setError('Échec de la vérification de l\'email. Veuillez réessayer.');
+      router.replace('/login', { scroll: false });
+    }
+  }, [searchParams, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,6 +78,15 @@ export default function LoginPage() {
             <h1 className="text-2xl font-bold">Bon retour</h1>
             <p className="text-base-content/60">Connectez-vous à Bust & Chill</p>
           </div>
+
+          {success && (
+            <div className="alert alert-success">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{success}</span>
+            </div>
+          )}
 
           {error && (
             <div className="alert alert-error">
@@ -115,4 +153,17 @@ export default function LoginPage() {
   );
 }
 
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[calc(100vh-64px)] flex items-center justify-center">
+          <span className="loading loading-spinner loading-lg"></span>
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
+  );
+}
 
