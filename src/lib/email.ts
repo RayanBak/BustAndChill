@@ -165,6 +165,8 @@ export async function sendVerificationEmail(
   // Vérification en production
   if (isProduction && !process.env.SMTP_HOST) {
     console.error('❌ Cannot send email: SMTP not configured in production');
+    console.error('   User created but email verification will not work');
+    console.error('   Please configure SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM');
     return false;
   }
   
@@ -179,7 +181,7 @@ export async function sendVerificationEmail(
     
     console.log('✅ Email sent successfully:', info.messageId);
     console.log('   To:', email);
-    console.log('   Subject: Verify your email - Bust & Chill');
+    console.log('   Subject: Vérifiez votre email - Bust & Chill');
     
     // En développement, afficher aussi l'URL pour faciliter les tests
     if (!isProduction) {
@@ -200,6 +202,12 @@ export async function sendVerificationEmail(
     if (error.response) {
       console.error('   SMTP response:', error.response);
     }
+    if (error.responseCode) {
+      console.error('   SMTP response code:', error.responseCode);
+    }
+    
+    // Log de l'URL de vérification même en cas d'échec pour faciliter le débogage
+    console.error('📧 Verification URL (en cas d\'échec SMTP):', verificationUrl);
     
     // En développement, on peut continuer pour les tests (MailHog local)
     if (!isProduction) {
@@ -210,7 +218,7 @@ export async function sendVerificationEmail(
       return true; // Permettre de continuer en dev même si SMTP échoue
     }
     
-    // En production, c'est une erreur critique
+    // En production, on retourne false mais ne bloque pas l'inscription
     return false;
   }
 }

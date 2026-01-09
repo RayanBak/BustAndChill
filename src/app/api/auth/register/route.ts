@@ -85,12 +85,27 @@ export async function POST(request: NextRequest) {
       },
     });
     
-    // Send verification email
-    await sendVerificationEmail(user.email, user.username, token);
+    // Send verification email (ne bloque pas l'inscription si ça échoue)
+    const emailSent = await sendVerificationEmail(user.email, user.username, token).catch((err) => {
+      console.error('Email sending error (non-blocking):', err);
+      return false;
+    });
+    
+    // L'utilisateur est créé même si l'email échoue
+    // On informe l'utilisateur mais on ne bloque pas l'inscription
+    if (!emailSent) {
+      console.warn(`⚠️ Email non envoyé pour ${user.email}, mais l'utilisateur est créé`);
+      return NextResponse.json({
+        success: true,
+        message: 'Inscription réussie ! Cependant, l\'envoi de l\'email a échoué. Veuillez contacter le support.',
+        emailSent: false,
+      });
+    }
     
     return NextResponse.json({
       success: true,
       message: 'Inscription réussie ! Veuillez vérifier votre email pour valider votre compte.',
+      emailSent: true,
     });
     
   } catch (error) {

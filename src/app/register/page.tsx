@@ -30,28 +30,67 @@ export default function RegisterPage() {
     setError('');
     setSuccess('');
 
+    console.log('🔵 [REGISTER] Début du processus d\'inscription');
+    console.log('🔵 [REGISTER] Données du formulaire:', { 
+      email: formData.email, 
+      username: formData.username,
+      firstname: formData.firstname,
+      lastname: formData.lastname 
+    });
+
     if (formData.password !== formData.confirmPassword) {
+      console.error('❌ [REGISTER] Les mots de passe ne correspondent pas');
       setError('Les mots de passe ne correspondent pas');
       return;
     }
 
     setIsLoading(true);
+    console.log('🟡 [REGISTER] Envoi de la requête d\'inscription...');
 
-    const result = await register({
-      firstname: formData.firstname,
-      lastname: formData.lastname,
-      email: formData.email,
-      username: formData.username,
-      password: formData.password,
-    });
+    try {
+      const result = await register({
+        firstname: formData.firstname,
+        lastname: formData.lastname,
+        email: formData.email,
+        username: formData.username,
+        password: formData.password,
+      });
 
-    setIsLoading(false);
+      console.log('🟡 [REGISTER] Réponse reçue:', result);
 
-    if (result.success) {
-      setSuccess(result.message || 'Inscription réussie ! Vérifiez votre email pour valider votre compte.');
-      setTimeout(() => router.push('/login'), 3000);
-    } else {
-      setError(result.message || 'Échec de l\'inscription');
+      if (result.success) {
+        console.log('✅ [REGISTER] Inscription réussie !');
+        console.log('📧 [REGISTER] Message:', result.message);
+        console.log('📧 [REGISTER] Email envoyé:', result.emailSent !== false ? 'Oui' : 'Non');
+        
+        setSuccess(result.message || 'Inscription réussie ! Vérifiez votre email pour valider votre compte.');
+        
+        // Réinitialiser le formulaire
+        setFormData({
+          firstname: '',
+          lastname: '',
+          email: '',
+          username: '',
+          password: '',
+          confirmPassword: '',
+        });
+        
+        console.log('⏱️ [REGISTER] Redirection vers /login dans 3 secondes...');
+        // Rediriger après 3 secondes
+        setTimeout(() => {
+          console.log('🔄 [REGISTER] Redirection vers /login maintenant');
+          router.push('/login');
+        }, 3000);
+      } else {
+        console.error('❌ [REGISTER] Inscription échouée:', result.message);
+        setError(result.message || 'Échec de l\'inscription');
+      }
+    } catch (err) {
+      console.error('❌ [REGISTER] Erreur lors de l\'inscription:', err);
+      setError('Une erreur est survenue. Veuillez réessayer.');
+    } finally {
+      setIsLoading(false);
+      console.log('🔵 [REGISTER] Processus d\'inscription terminé');
     }
   };
 

@@ -51,21 +51,34 @@ export function useAuth() {
   const [token, setToken] = useState<string | null>(null);
 
   const fetchUser = useCallback(async () => {
+    console.log('🔍 [AUTH] Vérification de l\'authentification...');
     try {
-      const response = await fetch('/api/auth/me');
+      const response = await fetch('/api/auth/me', {
+        credentials: 'include', // Important pour les cookies
+      });
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ [AUTH] Utilisateur authentifié:', data.user?.username || 'Non défini');
         setUser(data.user);
         setToken(data.user?.id || null);
       } else {
+        // 401 est normal si l'utilisateur n'est pas connecté
+        if (response.status === 401) {
+          console.log('ℹ️ [AUTH] Non authentifié (401) - normal si pas connecté');
+        } else {
+          console.warn('⚠️ [AUTH] Erreur lors de la vérification:', response.status, response.statusText);
+        }
         setUser(null);
         setToken(null);
       }
-    } catch {
+    } catch (error) {
+      console.error('❌ [AUTH] Erreur réseau lors de la vérification:', error);
       setUser(null);
       setToken(null);
     } finally {
       setIsLoading(false);
+      console.log('🔵 [AUTH] Vérification terminée, isLoading:', false);
     }
   }, []);
 
@@ -75,6 +88,8 @@ export function useAuth() {
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     setError(null);
+    console.log('🔵 [LOGIN] Tentative de connexion pour:', email);
+    
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -82,25 +97,43 @@ export function useAuth() {
         body: JSON.stringify({ email, password }),
       });
 
+      console.log('📥 [LOGIN] Réponse reçue:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
+
       const data = await response.json();
+      console.log('📥 [LOGIN] Données de la réponse:', data);
 
       if (!response.ok) {
-        setError(data.error || 'Login failed');
+        console.error('❌ [LOGIN] Échec de la connexion:', data.error);
+        setError(data.error || 'Échec de la connexion');
         return false;
       }
 
+      console.log('✅ [LOGIN] Connexion réussie pour:', data.user?.username);
       setUser(data.user);
       setToken(data.user?.id || null);
       await fetchUser(); // Refresh user data
       return true;
-    } catch {
-      setError('Login failed. Please try again.');
+    } catch (error) {
+      console.error('❌ [LOGIN] Erreur réseau lors de la connexion:', error);
+      setError('Échec de la connexion. Veuillez réessayer.');
       return false;
     }
-  }, []);
+  }, [fetchUser]);
 
-  const register = useCallback(async (registerData: RegisterData): Promise<{ success: boolean; message?: string }> => {
+  const register = useCallback(async (registerData: RegisterData): Promise<{ success: boolean; message?: string; emailSent?: boolean }> => {
     setError(null);
+    console.log('📤 [API] Envoi de la requête d\'inscription à /api/auth/register');
+    console.log('📤 [API] Données envoyées:', { 
+      email: registerData.email, 
+      username: registerData.username,
+      firstname: registerData.firstname,
+      lastname: registerData.lastname 
+    });
+    
     try {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
@@ -108,17 +141,27 @@ export function useAuth() {
         body: JSON.stringify(registerData),
       });
 
+      console.log('📥 [API] Réponse reçue:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
+
       const data = await response.json();
+      console.log('📥 [API] Données de la réponse:', data);
 
       if (!response.ok) {
-        setError(data.error || 'Registration failed');
+        console.error('❌ [API] Erreur de l\'API:', data.error);
+        setError(data.error || 'Échec de l\'inscription');
         return { success: false, message: data.error };
       }
 
-      return { success: true, message: data.message };
-    } catch {
-      setError('Registration failed. Please try again.');
-      return { success: false, message: 'Registration failed' };
+      console.log('✅ [API] Inscription réussie côté API');
+      return { success: true, message: data.message, emailSent: data.emailSent };
+    } catch (error) {
+      console.error('❌ [API] Erreur réseau lors de l\'inscription:', error);
+      setError('Échec de l\'inscription. Veuillez réessayer.');
+      return { success: false, message: 'Erreur réseau lors de l\'inscription' };
     }
   }, []);
 

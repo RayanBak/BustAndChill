@@ -23,14 +23,19 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setIsLoading(true);
+    
+    console.log('🔵 [LOGIN PAGE] Tentative de connexion');
+    console.log('🔵 [LOGIN PAGE] Email:', email);
 
     const success = await login(email, password);
 
     setIsLoading(false);
 
     if (success) {
+      console.log('✅ [LOGIN PAGE] Connexion réussie, redirection vers /dashboard');
       router.push('/dashboard');
     } else {
+      console.error('❌ [LOGIN PAGE] Échec de la connexion');
       setError('Email ou mot de passe invalide, ou email non vérifié');
     }
   };
