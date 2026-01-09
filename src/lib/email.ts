@@ -33,6 +33,7 @@ function createTransporter() {
   console.log('🔧 [SMTP]   Pass:', smtpPass ? '***' + smtpPass.substring(smtpPass.length - 3) : 'non défini');
   
   // Configuration de base
+  console.log('🔧 [SMTP] Création de la configuration de base...');
   const config: any = {
     host: smtpHost,
     port,
@@ -41,7 +42,25 @@ function createTransporter() {
       user: smtpUser,
       pass: smtpPass,
     } : undefined,
+    // Options de connexion pour éviter les timeouts
+    connectionTimeout: 10000, // 10 secondes pour établir la connexion
+    greetingTimeout: 10000,   // 10 secondes pour le greeting
+    socketTimeout: 30000,     // 30 secondes pour les opérations socket
+    // Options supplémentaires pour Gmail
+    tls: {
+      rejectUnauthorized: false, // Accepter les certificats auto-signés si nécessaire
+    },
   };
+  
+  console.log('🔧 [SMTP] Configuration de base créée:', {
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    hasAuth: !!config.auth,
+    connectionTimeout: config.connectionTimeout,
+    greetingTimeout: config.greetingTimeout,
+    socketTimeout: config.socketTimeout,
+  });
   
   // Configuration spécifique pour certains services
   if (smtpHost.includes('gmail.com') || smtpHost.includes('googlemail.com')) {
@@ -59,6 +78,14 @@ function createTransporter() {
       console.log('🔧 [SMTP]   Mode: STARTTLS (port 587)');
     }
     config.service = 'gmail';
+    
+    // Options spécifiques pour Gmail
+    config.connectionTimeout = 15000; // 15 secondes pour Gmail
+    config.greetingTimeout = 15000;
+    console.log('🔧 [SMTP]   Timeouts ajustés pour Gmail:', {
+      connectionTimeout: config.connectionTimeout,
+      greetingTimeout: config.greetingTimeout,
+    });
   } else if (smtpHost.includes('sendgrid')) {
     console.log('🔧 [SMTP] Service SendGrid détecté');
     config.secure = false;
@@ -93,18 +120,34 @@ function createTransporter() {
     hasAuth: !!config.auth
   });
   
+  console.log('🔧 [SMTP] Création du transporter Nodemailer...');
   const transporter = nodemailer.createTransport(config);
+  console.log('✅ [SMTP] Transporter créé');
   
   // Test de la connexion en production (une fois au démarrage) - ASYNCHRONE pour ne pas bloquer
   if (isProduction && smtpHost !== 'localhost') {
     console.log('🔧 [SMTP] Vérification de la connexion SMTP (asynchrone)...');
+    console.log('🔧 [SMTP] Tentative de connexion à:', smtpHost, ':', port);
+    const verifyStartTime = Date.now();
+    
     transporter.verify().then(() => {
-      console.log('✅ [SMTP] Connexion SMTP vérifiée avec succès');
+      const verifyElapsed = Date.now() - verifyStartTime;
+      console.log(`✅ [SMTP] Connexion SMTP vérifiée avec succès (${verifyElapsed}ms)`);
     }).catch((error) => {
-      console.error('❌ [SMTP] Échec de la vérification de connexion:', error.message);
+      const verifyElapsed = Date.now() - verifyStartTime;
+      console.error(`❌ [SMTP] Échec de la vérification de connexion après ${verifyElapsed}ms`);
+      console.error('❌ [SMTP] Message:', error.message);
       console.error('❌ [SMTP] Code:', error.code);
+      console.error('❌ [SMTP] Errno:', error.errno);
+      console.error('❌ [SMTP] Syscall:', error.syscall);
+      console.error('❌ [SMTP] Hostname:', error.hostname);
+      console.error('❌ [SMTP] Port:', error.port);
+      if (error.response) {
+        console.error('❌ [SMTP] Réponse SMTP:', error.response);
+      }
       console.error('❌ [SMTP] Vérifiez votre configuration SMTP');
       console.error('❌ [SMTP] Variables requises: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS');
+      console.error('❌ [SMTP] Pour Gmail: utilisez un "Mot de passe d\'application" (pas votre mot de passe Gmail)');
     });
   } else if (!isProduction) {
     console.log('🔧 [SMTP] Mode développement - pas de vérification de connexion');
@@ -275,16 +318,50 @@ export async function sendVerificationEmail(
     const startTime = Date.now();
     
     // Test de connexion avant l'envoi (optionnel mais utile pour diagnostiquer)
-    console.log('📧 [EMAIL] Test de connexion SMTP avant envoi...');
+    console.log('📧 [EMAIL] ========== TEST DE CONNEXION SMTP ==========');
+    console.log('📧 [EMAIL] Étape 1: Tentative de connexion au serveur SMTP...');
+    console.log('📧 [EMAIL]   Host:', process.env.SMTP_HOST);
+    console.log('📧 [EMAIL]   Port:', process.env.SMTP_PORT);
+    console.log('📧 [EMAIL]   User:', process.env.SMTP_USER ? `${process.env.SMTP_USER.substring(0, 3)}***` : 'NON DÉFINI');
+    
+    const verifyStartTime = Date.now();
     try {
+      console.log('📧 [EMAIL] Étape 2: Appel de transporter.verify()...');
       await transporter.verify();
-      console.log('✅ [EMAIL] Connexion SMTP vérifiée avant envoi');
+      const verifyElapsed = Date.now() - verifyStartTime;
+      console.log(`✅ [EMAIL] Étape 3: Connexion SMTP vérifiée avec succès (${verifyElapsed}ms)`);
+      console.log('📧 [EMAIL] ========== FIN TEST CONNEXION ==========');
     } catch (verifyError: any) {
-      console.error('❌ [EMAIL] Échec de la vérification SMTP:', verifyError.message);
+      const verifyElapsed = Date.now() - verifyStartTime;
+      console.error(`❌ [EMAIL] Échec après ${verifyElapsed}ms`);
+      console.error('❌ [EMAIL] Étape 3: Échec de la vérification SMTP');
+      console.error('❌ [EMAIL] Message:', verifyError.message);
       console.error('❌ [EMAIL] Code:', verifyError.code);
+      console.error('❌ [EMAIL] Errno:', verifyError.errno);
+      console.error('❌ [EMAIL] Syscall:', verifyError.syscall);
+      console.error('❌ [EMAIL] Hostname:', verifyError.hostname);
+      console.error('❌ [EMAIL] Port:', verifyError.port);
+      if (verifyError.response) {
+        console.error('❌ [EMAIL] Réponse SMTP:', verifyError.response);
+      }
+      if (verifyError.responseCode) {
+        console.error('❌ [EMAIL] Code de réponse SMTP:', verifyError.responseCode);
+      }
+      if (verifyError.command) {
+        console.error('❌ [EMAIL] Commande échouée:', verifyError.command);
+      }
+      if (verifyError.stack) {
+        console.error('❌ [EMAIL] Stack trace:', verifyError.stack);
+      }
       console.error('❌ [EMAIL] Cela indique un problème de connexion avant même l\'envoi');
-      throw new Error(`Connexion SMTP impossible: ${verifyError.message}`);
+      console.error('❌ [EMAIL] ========== FIN TEST CONNEXION (ÉCHEC) ==========');
+      throw new Error(`Connexion SMTP impossible: ${verifyError.message} (code: ${verifyError.code})`);
     }
+    
+    console.log('📧 [EMAIL] Étape 4: Préparation de l\'envoi de l\'email...');
+    console.log('📧 [EMAIL]   From:', mailOptions.from);
+    console.log('📧 [EMAIL]   To:', mailOptions.to);
+    console.log('📧 [EMAIL]   Subject:', mailOptions.subject);
     
     const sendPromise = transporter.sendMail(mailOptions);
     const timeoutPromise = new Promise<never>((_, reject) => {
@@ -299,9 +376,10 @@ export async function sendVerificationEmail(
       }, 30000);
     });
     
+    console.log('📧 [EMAIL] Étape 5: Envoi de l\'email en cours...');
     const info = await Promise.race([sendPromise, timeoutPromise]);
     const elapsed = Date.now() - startTime;
-    console.log(`⏱️ [EMAIL] Envoi réussi en ${elapsed}ms`);
+    console.log(`✅ [EMAIL] Étape 6: Envoi réussi en ${elapsed}ms`);
     
     console.log('✅ [EMAIL] ========== EMAIL ENVOYÉ AVEC SUCCÈS ==========');
     console.log('✅ [EMAIL] Message ID:', info.messageId);
