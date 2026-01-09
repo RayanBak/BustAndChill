@@ -85,16 +85,26 @@ export async function POST(request: NextRequest) {
       },
     });
     
+    console.log('📧 [REGISTER API] Préparation de l\'envoi d\'email de vérification...');
+    console.log('📧 [REGISTER API] Email:', user.email);
+    console.log('📧 [REGISTER API] Token généré:', token.substring(0, 20) + '...');
+    
     // Send verification email (ne bloque pas l'inscription si ça échoue)
     const emailSent = await sendVerificationEmail(user.email, user.username, token).catch((err) => {
-      console.error('Email sending error (non-blocking):', err);
+      console.error('❌ [REGISTER API] Erreur lors de l\'envoi d\'email (non-bloquant):', err);
+      console.error('❌ [REGISTER API] Type d\'erreur:', err?.constructor?.name);
+      console.error('❌ [REGISTER API] Message:', err?.message);
       return false;
     });
+    
+    console.log('📧 [REGISTER API] Résultat de l\'envoi d\'email:', emailSent ? '✅ SUCCÈS' : '❌ ÉCHEC');
     
     // L'utilisateur est créé même si l'email échoue
     // On informe l'utilisateur mais on ne bloque pas l'inscription
     if (!emailSent) {
-      console.warn(`⚠️ Email non envoyé pour ${user.email}, mais l'utilisateur est créé`);
+      console.warn(`⚠️ [REGISTER API] Email non envoyé pour ${user.email}, mais l'utilisateur est créé`);
+      console.warn(`⚠️ [REGISTER API] ID utilisateur: ${user.id}`);
+      console.warn(`⚠️ [REGISTER API] Token de vérification: ${token}`);
       return NextResponse.json({
         success: true,
         message: 'Inscription réussie ! Cependant, l\'envoi de l\'email a échoué. Veuillez contacter le support.',
@@ -102,6 +112,7 @@ export async function POST(request: NextRequest) {
       });
     }
     
+    console.log('✅ [REGISTER API] Inscription complète et email envoyé avec succès');
     return NextResponse.json({
       success: true,
       message: 'Inscription réussie ! Veuillez vérifier votre email pour valider votre compte.',

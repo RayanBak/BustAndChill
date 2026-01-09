@@ -3,13 +3,15 @@ import mjml2html from 'mjml';
 
 // Configuration SMTP pour production et développement
 function createTransporter() {
+  console.log('🔧 [SMTP] ========== INITIALISATION TRANSPORTER ==========');
   const isProduction = process.env.NODE_ENV === 'production';
+  console.log('🔧 [SMTP] Mode:', isProduction ? 'PRODUCTION' : 'DÉVELOPPEMENT');
   
   // En production, on exige les variables SMTP
   if (isProduction) {
     if (!process.env.SMTP_HOST || !process.env.SMTP_PORT) {
-      console.error('❌ SMTP configuration missing in production!');
-      console.error('Required: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM');
+      console.error('❌ [SMTP] Configuration manquante en production !');
+      console.error('❌ [SMTP] Variables requises: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM');
       throw new Error('SMTP configuration is required in production');
     }
   }
@@ -22,6 +24,13 @@ function createTransporter() {
   const smtpHost = process.env.SMTP_HOST || 'localhost';
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS;
+  
+  console.log('🔧 [SMTP] Configuration détectée:');
+  console.log('🔧 [SMTP]   Host:', smtpHost);
+  console.log('🔧 [SMTP]   Port:', port);
+  console.log('🔧 [SMTP]   Secure:', secure);
+  console.log('🔧 [SMTP]   User:', smtpUser ? `${smtpUser.substring(0, 3)}***` : 'non défini');
+  console.log('🔧 [SMTP]   Pass:', smtpPass ? '***' + smtpPass.substring(smtpPass.length - 3) : 'non défini');
   
   // Configuration de base
   const config: any = {
@@ -36,50 +45,70 @@ function createTransporter() {
   
   // Configuration spécifique pour certains services
   if (smtpHost.includes('gmail.com') || smtpHost.includes('googlemail.com')) {
+    console.log('🔧 [SMTP] Service Gmail détecté');
     // Gmail peut utiliser port 587 (STARTTLS) ou 465 (SSL)
     if (port === 465) {
       config.secure = true;
       config.port = 465;
+      console.log('🔧 [SMTP]   Mode: SSL (port 465)');
     } else {
       // Port 587 avec STARTTLS
       config.secure = false;
       config.port = 587;
       config.requireTLS = true;
+      console.log('🔧 [SMTP]   Mode: STARTTLS (port 587)');
     }
     config.service = 'gmail';
   } else if (smtpHost.includes('sendgrid')) {
+    console.log('🔧 [SMTP] Service SendGrid détecté');
     config.secure = false;
     config.port = 587;
     config.requireTLS = true;
   } else if (smtpHost.includes('resend.com') || smtpHost.includes('resend')) {
-    // Resend SMTP utilise le port 465 avec SSL
+    console.log('🔧 [SMTP] Service Resend détecté');
     config.secure = true;
     config.port = 465;
   } else if (smtpHost.includes('mailgun.org')) {
-    // Mailgun utilise le port 587 avec STARTTLS
+    console.log('🔧 [SMTP] Service Mailgun détecté');
     config.secure = false;
     config.port = 587;
     config.requireTLS = true;
+  } else {
+    console.log('🔧 [SMTP] Service SMTP générique');
   }
   
   // Support pour TLS explicite (port 587 par défaut)
   if (port === 587 && !config.requireTLS) {
     config.secure = false;
     config.requireTLS = true;
+    console.log('🔧 [SMTP] TLS explicite activé pour le port 587');
   }
+  
+  console.log('🔧 [SMTP] Configuration finale:', {
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    requireTLS: config.requireTLS,
+    service: config.service,
+    hasAuth: !!config.auth
+  });
   
   const transporter = nodemailer.createTransport(config);
   
   // Test de la connexion en production (une fois au démarrage)
   if (isProduction && smtpHost !== 'localhost') {
+    console.log('🔧 [SMTP] Vérification de la connexion SMTP...');
     transporter.verify().then(() => {
-      console.log('✅ SMTP server connection verified');
+      console.log('✅ [SMTP] Connexion SMTP vérifiée avec succès');
     }).catch((error) => {
-      console.error('❌ SMTP server connection failed:', error.message);
-      console.error('Please check your SMTP configuration');
+      console.error('❌ [SMTP] Échec de la vérification de connexion:', error.message);
+      console.error('❌ [SMTP] Vérifiez votre configuration SMTP');
     });
+  } else if (!isProduction) {
+    console.log('🔧 [SMTP] Mode développement - pas de vérification de connexion');
   }
   
+  console.log('🔧 [SMTP] ========== TRANSPORTER INITIALISÉ ==========\n');
   return transporter;
 }
 
@@ -149,77 +178,144 @@ export async function sendVerificationEmail(
   username: string,
   token: string
 ): Promise<boolean> {
+  console.log('📧 [EMAIL] ========== DÉBUT ENVOI EMAIL ==========');
+  console.log('📧 [EMAIL] Destinataire:', email);
+  console.log('📧 [EMAIL] Nom d\'utilisateur:', username);
+  
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const verificationUrl = `${appUrl}/verify-email?token=${token}`;
+  console.log('📧 [EMAIL] URL de vérification:', verificationUrl);
+  console.log('📧 [EMAIL] APP_URL configuré:', appUrl);
   
   const mjmlTemplate = verifyEmailMjml(username, verificationUrl);
   const { html, errors } = mjml2html(mjmlTemplate);
   
   if (errors.length > 0) {
-    console.error('MJML compilation errors:', errors);
+    console.error('❌ [EMAIL] Erreurs de compilation MJML:', errors);
+  } else {
+    console.log('✅ [EMAIL] Template MJML compilé avec succès');
   }
   
   const isProduction = process.env.NODE_ENV === 'production';
   const smtpFrom = process.env.SMTP_FROM || 'noreply@bustandchill.local';
   
+  console.log('📧 [EMAIL] ========== CONFIGURATION SMTP ==========');
+  console.log('📧 [EMAIL] NODE_ENV:', process.env.NODE_ENV || 'non défini');
+  console.log('📧 [EMAIL] SMTP_HOST:', process.env.SMTP_HOST || 'NON DÉFINI');
+  console.log('📧 [EMAIL] SMTP_PORT:', process.env.SMTP_PORT || 'NON DÉFINI');
+  console.log('📧 [EMAIL] SMTP_USER:', process.env.SMTP_USER ? `${process.env.SMTP_USER.substring(0, 3)}***` : 'NON DÉFINI');
+  console.log('📧 [EMAIL] SMTP_PASS:', process.env.SMTP_PASS ? '***' + process.env.SMTP_PASS.substring(process.env.SMTP_PASS.length - 3) : 'NON DÉFINI');
+  console.log('📧 [EMAIL] SMTP_FROM:', smtpFrom);
+  console.log('📧 [EMAIL] SMTP_SECURE:', process.env.SMTP_SECURE || 'auto');
+  
   // Vérification en production
   if (isProduction && !process.env.SMTP_HOST) {
-    console.error('❌ Cannot send email: SMTP not configured in production');
-    console.error('   User created but email verification will not work');
-    console.error('   Please configure SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM');
+    console.error('❌ [EMAIL] ========== ERREUR CONFIGURATION ==========');
+    console.error('❌ [EMAIL] SMTP non configuré en production !');
+    console.error('❌ [EMAIL] L\'utilisateur sera créé mais l\'email de vérification ne fonctionnera pas');
+    console.error('❌ [EMAIL] Variables requises: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM');
     return false;
   }
   
+  // Vérifier que toutes les variables nécessaires sont présentes
+  const missingVars = [];
+  if (!process.env.SMTP_HOST) missingVars.push('SMTP_HOST');
+  if (!process.env.SMTP_PORT) missingVars.push('SMTP_PORT');
+  if (!process.env.SMTP_USER) missingVars.push('SMTP_USER');
+  if (!process.env.SMTP_PASS) missingVars.push('SMTP_PASS');
+  
+  if (missingVars.length > 0) {
+    console.error('❌ [EMAIL] Variables SMTP manquantes:', missingVars.join(', '));
+  } else {
+    console.log('✅ [EMAIL] Toutes les variables SMTP sont présentes');
+  }
+  
   try {
-    const info = await transporter.sendMail({
+    console.log('📧 [EMAIL] ========== TENTATIVE D\'ENVOI ==========');
+    console.log('📧 [EMAIL] From:', smtpFrom);
+    console.log('📧 [EMAIL] To:', email);
+    console.log('📧 [EMAIL] Subject: 🃏 Vérifiez votre email - Bust & Chill');
+    
+    const mailOptions = {
       from: smtpFrom,
       to: email,
       subject: '🃏 Vérifiez votre email - Bust & Chill',
       html,
       text: `Bienvenue sur Bust & Chill, ${username} !\n\nVeuillez vérifier votre email en visitant : ${verificationUrl}\n\nCe lien expire dans 24 heures.`,
-    });
+    };
     
-    console.log('✅ Email sent successfully:', info.messageId);
-    console.log('   To:', email);
-    console.log('   Subject: Vérifiez votre email - Bust & Chill');
+    console.log('📧 [EMAIL] Envoi via transporter...');
+    const info = await transporter.sendMail(mailOptions);
+    
+    console.log('✅ [EMAIL] ========== EMAIL ENVOYÉ AVEC SUCCÈS ==========');
+    console.log('✅ [EMAIL] Message ID:', info.messageId);
+    console.log('✅ [EMAIL] Réponse SMTP:', info.response || 'Pas de réponse');
+    console.log('✅ [EMAIL] Acceptés:', info.accepted || []);
+    console.log('✅ [EMAIL] Rejetés:', info.rejected || []);
+    console.log('✅ [EMAIL] Pending:', info.pending || []);
     
     // En développement, afficher aussi l'URL pour faciliter les tests
     if (!isProduction) {
-      console.log('📧 Verification URL (dev):', verificationUrl);
+      console.log('📧 [EMAIL] URL de vérification (dev):', verificationUrl);
     }
     
     return true;
   } catch (error: any) {
-    console.error('❌ Failed to send email:', error.message);
+    console.error('❌ [EMAIL] ========== ERREUR LORS DE L\'ENVOI ==========');
+    console.error('❌ [EMAIL] Message d\'erreur:', error.message);
+    console.error('❌ [EMAIL] Type d\'erreur:', error.constructor?.name || 'Unknown');
     
     // Détails supplémentaires pour le débogage
     if (error.code) {
-      console.error('   Error code:', error.code);
+      console.error('❌ [EMAIL] Code d\'erreur:', error.code);
+    }
+    if (error.errno) {
+      console.error('❌ [EMAIL] Errno:', error.errno);
+    }
+    if (error.syscall) {
+      console.error('❌ [EMAIL] Syscall:', error.syscall);
+    }
+    if (error.hostname) {
+      console.error('❌ [EMAIL] Hostname:', error.hostname);
+    }
+    if (error.port) {
+      console.error('❌ [EMAIL] Port:', error.port);
     }
     if (error.command) {
-      console.error('   Failed command:', error.command);
+      console.error('❌ [EMAIL] Commande échouée:', error.command);
     }
     if (error.response) {
-      console.error('   SMTP response:', error.response);
+      console.error('❌ [EMAIL] Réponse SMTP:', error.response);
     }
     if (error.responseCode) {
-      console.error('   SMTP response code:', error.responseCode);
+      console.error('❌ [EMAIL] Code de réponse SMTP:', error.responseCode);
+    }
+    if (error.command) {
+      console.error('❌ [EMAIL] Commande:', error.command);
+    }
+    
+    // Stack trace complète
+    if (error.stack) {
+      console.error('❌ [EMAIL] Stack trace:', error.stack);
     }
     
     // Log de l'URL de vérification même en cas d'échec pour faciliter le débogage
-    console.error('📧 Verification URL (en cas d\'échec SMTP):', verificationUrl);
+    console.error('📧 [EMAIL] URL de vérification (à utiliser manuellement):', verificationUrl);
     
     // En développement, on peut continuer pour les tests (MailHog local)
     if (!isProduction) {
-      console.log('='.repeat(60));
-      console.log('⚠️  EMAIL SENDING FAILED - Development mode');
-      console.log('   Verification URL for testing:', verificationUrl);
-      console.log('='.repeat(60));
+      console.log('⚠️ [EMAIL] ========== MODE DÉVELOPPEMENT ==========');
+      console.log('⚠️ [EMAIL] Envoi d\'email échoué mais mode dev activé');
+      console.log('⚠️ [EMAIL] L\'inscription continue quand même');
+      console.log('⚠️ [EMAIL] URL de vérification pour tests:', verificationUrl);
       return true; // Permettre de continuer en dev même si SMTP échoue
     }
     
     // En production, on retourne false mais ne bloque pas l'inscription
+    console.error('❌ [EMAIL] Échec en production - l\'inscription continue mais l\'email n\'est pas envoyé');
     return false;
+  } finally {
+    console.log('📧 [EMAIL] ========== FIN PROCESSUS EMAIL ==========\n');
   }
 }
 
