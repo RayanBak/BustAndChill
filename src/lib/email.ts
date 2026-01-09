@@ -1,6 +1,71 @@
 import nodemailer from 'nodemailer';
 import mjml2html from 'mjml';
 
+// Fonction pour envoyer via l'API SendGrid (HTTP) - plus fiable que SMTP sur Railway
+async function sendViaSendGridAPI(
+  email: string,
+  username: string,
+  token: string,
+  html: string
+): Promise<boolean> {
+  const apiKey = process.env.SENDGRID_API_KEY;
+  if (!apiKey) {
+    console.error('❌ [SENDGRID API] SENDGRID_API_KEY non défini');
+    return false;
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const verificationUrl = `${appUrl}/api/auth/verify-email?token=${token}`;
+  const smtpFrom = process.env.SMTP_FROM || 'noreply@bustandchill.local';
+
+  console.log('📧 [SENDGRID API] ========== ENVOI VIA API SENDGRID ==========');
+  console.log('📧 [SENDGRID API] From:', smtpFrom);
+  console.log('📧 [SENDGRID API] To:', email);
+  console.log('📧 [SENDGRID API] URL:', verificationUrl);
+
+  try {
+    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        personalizations: [{
+          to: [{ email }],
+          subject: '🃏 Vérifiez votre email - Bust & Chill',
+        }],
+        from: { email: smtpFrom, name: 'Bust & Chill' },
+        content: [
+          {
+            type: 'text/html',
+            value: html,
+          },
+          {
+            type: 'text/plain',
+            value: `Bienvenue sur Bust & Chill, ${username} !\n\nVeuillez vérifier votre email en visitant : ${verificationUrl}\n\nCe lien expire dans 24 heures.`,
+          },
+        ],
+      }),
+    });
+
+    if (response.ok) {
+      console.log('✅ [SENDGRID API] Email envoyé avec succès via API');
+      console.log('✅ [SENDGRID API] Status:', response.status);
+      return true;
+    } else {
+      const errorText = await response.text();
+      console.error('❌ [SENDGRID API] Échec de l\'envoi');
+      console.error('❌ [SENDGRID API] Status:', response.status);
+      console.error('❌ [SENDGRID API] Réponse:', errorText);
+      return false;
+    }
+  } catch (error: any) {
+    console.error('❌ [SENDGRID API] Erreur lors de l\'envoi:', error.message);
+    return false;
+  }
+}
+
 // Configuration SMTP pour production et développement
 function createTransporter() {
   console.log('🔧 [SMTP] ========== INITIALISATION TRANSPORTER ==========');
@@ -270,6 +335,14 @@ export async function sendVerificationEmail(
   
   const isProduction = process.env.NODE_ENV === 'production';
   const smtpFrom = process.env.SMTP_FROM || 'noreply@bustandchill.local';
+  
+  // PRIORITÉ 1: Utiliser l'API SendGrid si disponible (plus fiable que SMTP sur Railway)
+  if (process.env.SENDGRID_API_KEY) {
+    console.log('📧 [EMAIL] Détection de SENDGRID_API_KEY - utilisation de l\'API SendGrid (HTTP)');
+    return await sendViaSendGridAPI(email, username, token, html);
+  }
+  
+  console.log('📧 [EMAIL] Pas de SENDGRID_API_KEY détecté - utilisation de SMTP');
   
   console.log('📧 [EMAIL] ========== CONFIGURATION SMTP ==========');
   console.log('📧 [EMAIL] NODE_ENV:', process.env.NODE_ENV || 'non défini');
