@@ -596,6 +596,7 @@ function FullscreenTable({
   timer,
   betAmount,
   setBetAmount,
+  tableId,
   onStartGame,
   onBet,
   onHit,
@@ -609,6 +610,7 @@ function FullscreenTable({
   timer: number | null;
   betAmount: number;
   setBetAmount: (v: number) => void;
+  tableId: string;
   onStartGame: () => void;
   onBet: (amount: number) => void;
   onHit: () => void;
@@ -680,7 +682,7 @@ function FullscreenTable({
           <span className="text-white/40 text-xs sm:text-sm">• Manche {state.currentRound}</span>
           {/* Afficher le code pour les tables privées */}
           {state.visibility === 'private' && state.isHost && (
-            <ShareCodeButton tableId={params.uuid as string} />
+            <ShareCodeButton tableId={tableId} />
           )}
         </div>
         
@@ -1144,6 +1146,7 @@ function TableContent() {
         timer={timer}
         betAmount={betAmount}
         setBetAmount={setBetAmount}
+        tableId={tableId}
         onStartGame={startGame}
         onBet={placeBet}
         onHit={hit}
