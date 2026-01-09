@@ -1,428 +1,315 @@
-# 🚀 Guide de Déploiement en Production - Bust & Chill
+# 🚀 Guide de Déploiement - Bust & Chill sur Railway
 
-Ce guide vous explique étape par étape comment déployer **Bust & Chill** sur **Railway** pour un accès public en production.
+Ce guide vous explique comment déployer Bust & Chill sur Railway avec la validation par email fonctionnelle.
 
 ## 📋 Prérequis
 
-Avant de commencer, assurez-vous d'avoir :
+- Un compte [Railway](https://railway.app) (gratuit avec 5$ de crédit/mois)
+- Un compte sur un service SMTP (Gmail, SendGrid, Resend, etc.)
+- Votre projet sur GitHub
 
-- Un compte **GitHub** (pour le déploiement automatique)
-- Un compte **Railway** (gratuit avec 500$ de crédit par mois)
-- Un compte pour un service **SMTP** (Gmail, SendGrid, Mailgun, etc.) pour l'envoi d'emails
+## 🎯 Étapes de Déploiement
 
----
+### 1. Préparer le Projet sur GitHub
 
-## 🎯 ÉTAPE 1 : Préparer la Base de Données PostgreSQL
+Assurez-vous que votre projet est bien sur GitHub avec toutes les migrations Prisma :
 
-### Option A : PostgreSQL Railway (Recommandé)
+```bash
+git add .
+git commit -m "chore: prepare for Railway deployment"
+git push origin main
+```
 
-1. **Créer un nouveau projet sur Railway** : https://railway.app
-2. Cliquez sur **"New Project"** (Nouveau Projet)
-3. Sélectionnez **"Provision PostgreSQL"** (Provisionner PostgreSQL)
-4. Une fois créé, allez dans l'onglet **"Variables"** du service PostgreSQL
-5. Copiez la variable `DATABASE_URL` (elle sera automatiquement créée)
+### 2. Créer un Projet sur Railway
 
-**Note importante** : Railway crée deux types d'URLs :
+1. Allez sur [railway.app](https://railway.app) et connectez-vous
+2. Cliquez sur **"New Project"**
+3. Sélectionnez **"Deploy from GitHub repo"**
+4. Choisissez votre repo `bust-and-chill`
+5. Railway détecte automatiquement Next.js et commence le déploiement
 
-- **URL interne** (`postgres.railway.internal`) : Fonctionne uniquement entre services du même projet Railway. Utilisez cette URL si votre application est déployée sur Railway dans le même projet.
-- **URL publique** : Disponible dans l'onglet **"Connect"** > **"Public Network"**. Utilisez cette URL si vous avez besoin de vous connecter depuis l'extérieur de Railway.
+### 3. Ajouter PostgreSQL
 
-**Pour ce projet** : Utilisez l'URL interne (`postgres.railway.internal`) car l'application sera déployée sur Railway dans le même projet.
+1. Dans votre projet Railway, cliquez sur **"+ New"**
+2. Sélectionnez **"Database"** → **"Add PostgreSQL"**
+3. Railway crée automatiquement une base PostgreSQL
+4. Copiez la variable `DATABASE_URL` qui apparaît (ou cliquez sur la base → Variables → `DATABASE_URL`)
 
-### Option B : PostgreSQL Externe (Neon, Supabase, etc.)
+### 4. Configurer les Variables d'Environnement
 
-Si vous préférez utiliser un service externe :
-
-**Neon (Recommandé - gratuit)** :
-
-1. Créez un compte sur https://neon.tech
-2. Créez un nouveau projet
-3. Copiez la chaîne de connexion (format : `postgresql://user:password@host/dbname?sslmode=require`)
-
-**Supabase** :
-
-1. Créez un projet sur https://supabase.com
-2. Allez dans Paramètres > Base de données
-3. Copiez la chaîne de connexion
-
----
-
-## 🚂 ÉTAPE 2 : Déployer l'Application sur Railway
-
-### 2.1 Créer un Nouveau Service
-
-1. Dans votre projet Railway, cliquez sur **"New Service"** (Nouveau Service)
-2. Sélectionnez **"Deploy from GitHub repo"** (Déployer depuis un dépôt GitHub)
-3. Autorisez Railway à accéder à votre dépôt GitHub
-4. Sélectionnez le dépôt `bust-and-chill`
-5. Sélectionnez la branche (généralement `main` ou `master`)
-
-### 2.2 Configurer les Variables d'Environnement
-
-Dans l'onglet **"Variables"** de votre service Railway (l'application, pas PostgreSQL), ajoutez toutes les variables suivantes :
-
-**💡 Astuce** : Si votre service PostgreSQL et votre application sont dans le même projet Railway, Railway peut automatiquement partager la variable `DATABASE_URL`. Vérifiez dans l'onglet **"Variables"** de votre service application si `DATABASE_URL` apparaît déjà. Si oui, vous n'avez pas besoin de l'ajouter manuellement.
-
-#### Variables Obligatoires
+Dans Railway, allez dans votre service (l'app Next.js) → **Variables** → **Raw Editor**, et ajoutez :
 
 ```env
-# Base de données
-# Exemple d'URL interne Railway :
-# DATABASE_URL=postgresql://postgres:password@postgres.railway.internal:5432/railway
-#
-# Si vous utilisez PostgreSQL Railway dans le même projet, Railway peut partager automatiquement
-# la variable DATABASE_URL. Sinon, copiez-la depuis l'onglet "Variables" du service PostgreSQL.
-DATABASE_URL=postgresql://user:password@host:port/dbname
+# Base de données (ajouté automatiquement par Railway)
+DATABASE_URL=postgresql://postgres:password@postgres.railway.internal:5432/railway?sslmode=require
 
-# URL de l'application (sera fournie par Railway après le déploiement)
-# Format : https://votre-app.railway.app
+# Secret JWT (générez un secret fort !)
+JWT_SECRET=votre-secret-jwt-tres-long-et-securise-changez-moi-123456789
+
+# URL de l'application (sera remplacé après le déploiement)
 NEXT_PUBLIC_APP_URL=https://votre-app.railway.app
 
-# Secret JWT (générez une chaîne aléatoire sécurisée d'au moins 32 caractères)
-# Vous pouvez générer un secret avec : openssl rand -base64 32
-JWT_SECRET=votre-super-secret-jwt-key-change-this-in-production-min-32-chars
-
-# Configuration SMTP pour les emails
+# ⚠️ IMPORTANT : Configuration SMTP pour les emails
+# Voir les options ci-dessous
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=votre-email@gmail.com
-SMTP_PASS=votre-mot-de-passe-app-gmail
+SMTP_PASS=votre-mot-de-passe-app
 SMTP_FROM=noreply@bustandchill.com
+SMTP_SECURE=false
 
-# Environnement (ne pas modifier)
+# Environnement
 NODE_ENV=production
+PORT=3000
 ```
 
-#### Comment obtenir les variables SMTP
+> **💡 Note** : Après le premier déploiement, Railway vous donnera une URL du type `https://xxx.up.railway.app`. Mettez à jour `NEXT_PUBLIC_APP_URL` avec cette URL.
 
-**Gmail** :
+### 5. Configurer SMTP (Validation par Email)
 
-1. Activez l'authentification à deux facteurs sur votre compte Gmail
-2. Générez un "Mot de passe d'application" : https://myaccount.google.com/apppasswords
-3. Utilisez ce mot de passe pour `SMTP_PASS` (pas votre mot de passe Gmail normal)
-4. Configuration :
-   - `SMTP_HOST=smtp.gmail.com`
-   - `SMTP_PORT=587`
-   - `SMTP_USER=votre-email@gmail.com`
-   - `SMTP_PASS=le-mot-de-passe-d-application-généré`
+Railway **ne fournit pas** de service SMTP intégré, mais vous pouvez utiliser plusieurs services gratuits :
 
-**SendGrid** (Recommandé pour la production) :
+#### Option A : Gmail (Gratuit, 500 emails/jour)
 
-1. Créez un compte sur https://sendgrid.com
-2. Créez une clé API dans Paramètres > Clés API
-3. Configuration :
-   - `SMTP_HOST=smtp.sendgrid.net`
-   - `SMTP_PORT=587`
-   - `SMTP_USER=apikey`
-   - `SMTP_PASS=votre-clé-api-sendgrid`
+1. **Activez la validation en 2 étapes** sur votre compte Gmail
+2. **Générez un mot de passe d'application** :
 
-**Mailgun** :
+   - Allez sur [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+   - Sélectionnez "App" : Mail, "Device" : Other
+   - Entrez "Bust & Chill" et générez
+   - Copiez le mot de passe (16 caractères)
 
-1. Créez un compte sur https://mailgun.com
-2. Récupérez les identifiants SMTP dans votre tableau de bord
-3. Utilisez les valeurs fournies par Mailgun
+3. **Configurez dans Railway** :
 
-### 2.3 Configurer les Commandes de Build et Start
-
-Dans l'onglet **"Settings"** (Paramètres) de votre service Railway :
-
-1. **Build Command** (Commande de build) : `npm run build`
-2. **Start Command** (Commande de démarrage) : `npm run start`
-
-Railway détectera automatiquement Node.js et installera les dépendances.
-
----
-
-## 🗄️ ÉTAPE 3 : Initialiser la Base de Données
-
-### Option A : Via Railway CLI (Recommandé)
-
-1. **Installer Railway CLI** :
-
-   ```bash
-   npm i -g @railway/cli
-   ```
-
-2. **Se connecter** :
-
-   ```bash
-   railway login
-   ```
-
-3. **Lier le projet** :
-
-   ```bash
-   railway link
-   ```
-
-4. **Exécuter les migrations** :
-
-   ```bash
-   railway run npm run db:migrate:deploy
-   ```
-
-### Option B : Via Railway Dashboard
-
-1. Dans votre service Railway, allez dans l'onglet **"Deployments"** (Déploiements)
-2. Cliquez sur le dernier déploiement
-3. Ouvrez la console (terminal)
-4. Exécutez :
-
-   ```bash
-   npm run db:migrate:deploy
-   ```
-
-### Option C : Via Script de Démarrage (Automatique)
-
-Si vous préférez que les migrations s'exécutent automatiquement au démarrage, modifiez le script `start` dans `package.json` :
-
-```json
-"start": "cross-env NODE_ENV=production prisma migrate deploy && node server.js"
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=votre-email@gmail.com
+SMTP_PASS=votre-mot-de-passe-app-16-caracteres
+SMTP_FROM=noreply@bustandchill.com
+SMTP_SECURE=false
 ```
 
-⚠️ **Note** : Cette méthode peut ralentir le démarrage. Il est préférable d'exécuter les migrations manuellement la première fois.
+#### Option B : Resend (Recommandé - Gratuit, 3000 emails/mois)
 
----
+1. Créez un compte sur [resend.com](https://resend.com)
+2. Vérifiez votre domaine ou utilisez le domaine de test
+3. Allez dans **API Keys** et créez une clé
+4. Pour Resend via SMTP, utilisez :
 
-## 🔧 ÉTAPE 4 : Configurer le Domaine Personnalisé (Optionnel)
+```env
+SMTP_HOST=smtp.resend.com
+SMTP_PORT=465
+SMTP_USER=resend
+SMTP_PASS=votre-api-key-resend
+SMTP_FROM=noreply@votre-domaine.com
+SMTP_SECURE=true
+```
 
-1. Dans Railway, allez dans l'onglet **"Settings"** (Paramètres) de votre service
-2. Cliquez sur **"Generate Domain"** (Générer un domaine) pour obtenir un domaine Railway gratuit
-3. Ou ajoutez votre propre domaine personnalisé :
+> **Note** : Resend propose aussi une API directe, mais notre code utilise SMTP standard.
 
-   - Cliquez sur **"Custom Domain"** (Domaine personnalisé)
-   - Ajoutez votre domaine
-   - Suivez les instructions DNS
+#### Option C : SendGrid (Gratuit, 100 emails/jour)
 
-4. **Important** : Mettez à jour `NEXT_PUBLIC_APP_URL` avec votre nouveau domaine :
+1. Créez un compte sur [sendgrid.com](https://sendgrid.com)
+2. Allez dans **Settings** → **API Keys**
+3. Créez une clé API avec les permissions "Mail Send"
+4. Configurez :
 
+```env
+SMTP_HOST=smtp.sendgrid.net
+SMTP_PORT=587
+SMTP_USER=apikey
+SMTP_PASS=votre-api-key-sendgrid
+SMTP_FROM=noreply@bustandchill.com
+SMTP_SECURE=false
+```
+
+#### Option D : Mailgun (Gratuit, 100 emails/jour pendant 3 mois)
+
+1. Créez un compte sur [mailgun.com](https://mailgun.com)
+2. Vérifiez votre domaine (ou utilisez le domaine de test)
+3. Récupérez les credentials SMTP dans **Sending** → **Domain settings**
+4. Configurez :
+
+```env
+SMTP_HOST=smtp.mailgun.org
+SMTP_PORT=587
+SMTP_USER=votre-username-mailgun
+SMTP_PASS=votre-password-mailgun
+SMTP_FROM=noreply@votre-domaine.com
+SMTP_SECURE=false
+```
+
+### 6. Configuration Railway (Build & Start)
+
+Railway détecte automatiquement Next.js, mais vérifiez dans **Settings** → **Deploy** :
+
+- **Build Command** : `npm install && npm run build`
+- **Start Command** : `npm run start` (utilise déjà `prisma migrate deploy`)
+
+Le script `start` dans `package.json` s'occupe automatiquement de :
+
+1. Appliquer les migrations Prisma
+2. Générer le client Prisma
+3. Démarrer le serveur
+
+### 7. Déployer
+
+1. Railway déploie automatiquement à chaque push sur `main`
+2. Ou cliquez sur **"Redeploy"** après avoir configuré les variables
+3. Attendez que le build se termine (1-2 minutes)
+4. Railway vous donne une URL du type `https://xxx.up.railway.app`
+
+### 8. Finaliser la Configuration
+
+Après le premier déploiement :
+
+1. **Copiez l'URL Railway** (ex: `https://bust-and-chill-production.up.railway.app`)
+2. **Mettez à jour `NEXT_PUBLIC_APP_URL`** dans Railway Variables :
    ```env
-   NEXT_PUBLIC_APP_URL=https://votre-domaine.com
+   NEXT_PUBLIC_APP_URL=https://bust-and-chill-production.up.railway.app
+   ```
+3. **Redéployez** pour que le changement prenne effet
+
+### 9. Vérifier que Tout Fonctionne
+
+1. **Test d'inscription** :
+
+   - Allez sur `https://votre-app.railway.app/register`
+   - Créez un compte
+   - Vérifiez vos emails (y compris spam)
+   - Cliquez sur le lien de vérification
+
+2. **Test de connexion** :
+
+   - Essayez de vous connecter sans vérifier → doit échouer
+   - Vérifiez l'email → doit réussir
+   - Connectez-vous → doit fonctionner
+
+3. **Vérifier les logs Railway** :
+   - Allez dans votre service → **Deployments** → cliquez sur le dernier déploiement
+   - Ouvrez **Logs** et vérifiez :
+     - ✅ `SMTP server connection verified` (si SMTP configuré)
+     - ✅ `Email sent successfully`
+     - ✅ `Prisma migrations applied`
+     - ✅ `Production mode: listening on 0.0.0.0:3000`
+
+## 🔍 Dépannage
+
+### Les emails ne sont pas envoyés
+
+**Symptômes** :
+
+- Le compte est créé mais aucun email reçu
+- Erreur dans les logs : `SMTP server connection failed`
+
+**Solutions** :
+
+1. Vérifiez que toutes les variables SMTP sont définies :
+
+   ```bash
+   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
    ```
 
-5. Redéployez l'application pour que les changements prennent effet.
+2. Vérifiez les logs Railway :
 
----
+   - Recherchez `❌ Failed to send email`
+   - Vérifiez le code d'erreur SMTP
 
-## ✅ ÉTAPE 5 : Vérifications Post-Déploiement
+3. Pour Gmail :
 
-### 5.1 Vérifier que l'Application Démarre
+   - Assurez-vous d'utiliser un **mot de passe d'application** (pas votre mot de passe Gmail)
+   - Vérifiez que la validation en 2 étapes est activée
 
-1. Allez dans l'onglet **"Deployments"** (Déploiements) de Railway
-2. Vérifiez que le déploiement est réussi (statut vert)
-3. Ouvrez les logs pour vérifier :
-   - `> Ready on http://0.0.0.0:PORT`
-   - `> Socket.IO ready`
-   - Pas d'erreurs de connexion à la base de données
+4. Pour SendGrid/Resend :
 
-### 5.2 Tester l'Inscription et l'Email
+   - Vérifiez que votre API key est correcte
+   - Vérifiez que le compte n'a pas dépassé la limite quotidienne
 
-1. Ouvrez votre application : `https://votre-app.railway.app`
-2. Créez un compte (page `/register`)
-3. Vérifiez que vous recevez l'email de vérification
-4. Cliquez sur le lien de vérification dans l'email
-5. Connectez-vous avec vos identifiants
+5. **Test rapide** : Connectez-vous au service Railway et vérifiez les logs en temps réel pendant l'inscription
 
-### 5.3 Tester le Multi-Joueurs
+### Erreur "Email already verified" au clic sur le lien
 
-1. **Navigateur 1** : Connectez-vous et créez une partie
-2. **Navigateur 2** (ou onglet privé) : Connectez-vous avec un autre compte
-3. Rejoignez la partie avec le Game ID (identifiant de partie)
-4. Vérifiez que :
-   - Les deux joueurs voient la même table
-   - Les actions se synchronisent en temps réel
-   - Les timers fonctionnent correctement
-   - Les scores sont enregistrés dans la base de données
+**Cause** : L'email a déjà été vérifié
 
-### 5.4 Vérifier les WebSockets
+**Solution** : C'est normal, connectez-vous simplement avec vos identifiants
 
-1. Ouvrez la console du navigateur (F12)
-2. Allez dans l'onglet **"Network"** (Réseau) > **"WS"** (WebSocket)
-3. Vérifiez qu'une connexion WebSocket est établie vers `/api/socketio`
-4. Vérifiez qu'il n'y a pas d'erreurs de connexion
+### Erreur "Invalid or expired verification token"
 
----
+**Causes possibles** :
 
-## 🐛 Dépannage
+- Le token a expiré (24h)
+- L'URL a été modifiée
 
-### Erreur : "Cannot connect to database" (Impossible de se connecter à la base de données)
+**Solution** : Réinscrivez-vous ou contactez le support
+
+### La base de données n'est pas créée
+
+**Symptômes** :
+
+- Erreur : `table "users" does not exist`
+- Logs : `No migration found in prisma/migrations`
 
 **Solutions** :
 
-- Vérifiez que `DATABASE_URL` est correctement configurée dans Railway
-- Vérifiez que PostgreSQL est accessible (pas de firewall bloquant)
-- Vérifiez que les migrations ont été exécutées : `railway run npm run db:migrate:deploy`
-- Vérifiez que l'URL de la base de données utilise le bon format
+1. Vérifiez que le dossier `prisma/migrations` est bien dans le repo GitHub
+2. Vérifiez que `DATABASE_URL` est correct (avec `?sslmode=require` pour Railway)
+3. Vérifiez les logs du script `fix-migrations.js` dans Railway
 
-### Erreur : "Email verification not working" (La vérification d'email ne fonctionne pas)
+### L'application ne démarre pas
 
-**Solutions** :
+**Symptômes** :
 
-- Vérifiez que toutes les variables SMTP sont correctement configurées
-- Pour Gmail, utilisez un "Mot de passe d'application" (pas votre mot de passe normal)
-- Vérifiez les logs Railway pour voir les erreurs SMTP
-- Testez avec SendGrid ou Mailgun si Gmail ne fonctionne pas
-- Vérifiez que `SMTP_FROM` correspond à un email valide
-
-### Erreur : "Socket.IO not connecting" (Socket.IO ne se connecte pas)
+- Railway montre "Crash Loop"
+- Logs : `PrismaClientInitializationError`
 
 **Solutions** :
 
-- Vérifiez que `NEXT_PUBLIC_APP_URL` correspond exactement à l'URL de votre application (https://...)
-- Vérifiez que le serveur démarre correctement (logs Railway)
-- Vérifiez la console du navigateur pour les erreurs CORS
-- Assurez-vous que Railway n'a pas mis l'application en "sleep" (plan gratuit)
-- Vérifiez que l'URL utilise HTTPS (pas HTTP)
+1. Vérifiez `DATABASE_URL` :
 
-### Erreur : "Port already in use" (Port déjà utilisé)
+   - Doit pointer vers `postgres.railway.internal:5432` (base interne Railway)
+   - Doit inclure `?sslmode=require`
 
-**Solutions** :
+2. Vérifiez `JWT_SECRET` : doit être défini
 
-- Railway gère automatiquement le port via la variable `PORT`
-- Ne définissez pas manuellement `PORT` dans les variables d'environnement
-- Vérifiez que vous n'avez pas plusieurs services qui écoutent sur le même port
+3. Vérifiez `NEXT_PUBLIC_APP_URL` : doit être l'URL complète (https://...)
 
-### Application en "Sleep" (Veille - plan gratuit)
+## 🎯 Checklist Post-Déploiement
 
-**Solution** :
+- [ ] PostgreSQL créé et `DATABASE_URL` configuré
+- [ ] Toutes les variables d'environnement ajoutées
+- [ ] SMTP configuré et testé (email reçu)
+- [ ] `NEXT_PUBLIC_APP_URL` mis à jour avec l'URL Railway
+- [ ] Test d'inscription réussi
+- [ ] Test de vérification email réussi
+- [ ] Test de connexion réussi
+- [ ] Test de création de partie multijoueur réussi
 
-- Railway met les applications en veille après 5 minutes d'inactivité (plan gratuit)
-- Le premier accès peut prendre 30-60 secondes pour réveiller l'application
-- Pour éviter cela, passez au plan payant ou utilisez un service de "ping" pour maintenir l'application active
+## 💰 Coûts
 
-### Erreur : "Prisma Client not generated" (Client Prisma non généré)
+Railway offre :
 
-**Solution** :
+- **5$ de crédit gratuit par mois** (suffisant pour un MVP)
+- PostgreSQL : ~0.50$/mois
+- Application : ~0.01$/heure d'utilisation
 
-- Le client Prisma est généré automatiquement via le script `postinstall`
-- Si cela ne fonctionne pas, exécutez manuellement : `railway run npm run db:generate`
+Pour un projet étudiant/MVP, c'est généralement **gratuit** ou très peu cher (< 2$/mois).
 
----
+## 🔐 Sécurité
 
-## 📊 Monitoring et Logs
+- ✅ Cookies `secure=true` en production (HTTPS automatique)
+- ✅ JWT secrets stockés en variables d'environnement
+- ✅ Passwords hashés avec bcrypt
+- ✅ Tokens de vérification expirés après 24h
+- ✅ Protection CSRF via sameSite cookies
 
-### Voir les Logs en Temps Réel
+## 📚 Ressources
 
-1. Dans Railway, allez dans l'onglet **"Deployments"** (Déploiements)
-2. Cliquez sur le dernier déploiement
-3. Ouvrez la console pour voir les logs en temps réel
-
-### Métriques
-
-Railway fournit automatiquement :
-
-- Utilisation CPU/RAM
-- Trafic réseau
-- Nombre de requêtes
-
-Accédez-y via l'onglet **"Metrics"** (Métriques) de votre service.
+- [Railway Documentation](https://docs.railway.app)
+- [Next.js Deployment](https://nextjs.org/docs/deployment)
+- [Prisma Migrations](https://www.prisma.io/docs/concepts/components/prisma-migrate)
+- [Nodemailer Documentation](https://nodemailer.com/about/)
 
 ---
 
-## 🔒 Sécurité en Production
-
-### Checklist de Sécurité
-
-- ✅ `JWT_SECRET` est une chaîne aléatoire sécurisée (minimum 32 caractères)
-- ✅ `DATABASE_URL` utilise SSL (`?sslmode=require` si nécessaire)
-- ✅ Cookies sont sécurisés (`secure=true` en production)
-- ✅ `NEXT_PUBLIC_APP_URL` utilise HTTPS
-- ✅ Variables sensibles ne sont pas commitées dans Git
-- ✅ SMTP utilise TLS/SSL (port 587 ou 465)
-
-### Variables Sensibles
-
-⚠️ **NE JAMAIS** commiter ces variables dans Git :
-
-- `JWT_SECRET`
-- `DATABASE_URL`
-- `SMTP_PASS`
-- Toute autre clé API ou secret
-
-Utilisez toujours les variables d'environnement de Railway.
-
----
-
-## 🚀 Scaling (Mise à l'échelle - Optionnel)
-
-### Pour le MVP
-
-Par défaut, Railway exécute **1 instance** de votre application. C'est suffisant pour :
-
-- Jusqu'à 50-100 utilisateurs simultanés
-- Plusieurs tables de jeu actives
-- WebSockets fonctionnels
-
-### Limitations du Scaling
-
-⚠️ **Important** : Si vous scalez à plusieurs instances, les WebSockets ne fonctionneront pas correctement car l'état du jeu est stocké en mémoire.
-
-Pour supporter plusieurs instances, vous devrez :
-
-1. Utiliser Redis Adapter pour Socket.IO
-2. Stocker l'état du jeu dans Redis au lieu de la mémoire
-3. Configurer Redis sur Railway
-
-**Pour le MVP, gardez 1 instance.**
-
----
-
-## 📝 Commandes Utiles
-
-```bash
-# Voir les logs en temps réel
-railway logs
-
-# Exécuter une commande dans l'environnement Railway
-railway run npm run db:migrate:deploy
-
-# Ouvrir une console interactive
-railway shell
-
-# Voir les variables d'environnement
-railway variables
-
-# Redéployer manuellement
-railway up
-```
-
----
-
-## 🎉 Félicitations !
-
-Votre application **Bust & Chill** est maintenant déployée en production et accessible publiquement !
-
-### Prochaines Étapes
-
-1. ✅ Tester toutes les fonctionnalités
-2. ✅ Inviter des amis à jouer
-3. ✅ Monitorer les logs pour détecter les erreurs
-4. ✅ Optimiser les performances si nécessaire
-
-**Bon jeu ! 🃏🎮**
-
----
-
-## 📞 Support
-
-Si vous rencontrez des problèmes :
-
-1. Vérifiez les logs Railway
-2. Consultez la documentation Railway : https://docs.railway.app
-3. Vérifiez les issues GitHub du projet
-
----
-
-## 🔄 Mises à Jour
-
-Pour mettre à jour l'application :
-
-1. Poussez vos changements sur GitHub
-2. Railway redéploiera automatiquement
-3. Si vous avez modifié le schéma Prisma :
-   - Créez une migration : `npm run db:migrate`
-   - Déployez la migration : `railway run npm run db:migrate:deploy`
-
----
-
-**Dernière mise à jour** : 2024
+**✅ Une fois déployé, votre jeu sera accessible publiquement et la validation par email fonctionnera !**

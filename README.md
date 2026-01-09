@@ -192,6 +192,21 @@ bust-and-chill/
 | `SMTP_USER`           | Nom d'utilisateur SMTP               | -                          |
 | `SMTP_PASS`           | Mot de passe SMTP                    | -                          |
 | `SMTP_FROM`           | Adresse email de l'expéditeur        | noreply@bustandchill.local |
+| `SMTP_SECURE`         | Connexion SSL/TLS (true/false)       | auto (selon le port)       |
+
+> **📧 Pour la production** : Voir [README_DEPLOY.md](./README_DEPLOY.md) pour configurer SMTP sur Railway (Gmail, SendGrid, Resend, etc.)
+
+## 🚀 Déploiement sur Railway
+
+Pour déployer l'application avec la validation par email fonctionnelle, suivez le guide complet :
+
+👉 **[Guide de Déploiement Railway](./README_DEPLOY.md)**
+
+Ce guide couvre :
+- ✅ Configuration de PostgreSQL sur Railway
+- ✅ Configuration SMTP pour Gmail, SendGrid, Resend, Mailgun
+- ✅ Variables d'environnement nécessaires
+- ✅ Résolution des problèmes courants
 
 ## Dépannage
 

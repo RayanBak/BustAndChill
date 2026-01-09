@@ -1,15 +1,89 @@
 import nodemailer from 'nodemailer';
 import mjml2html from 'mjml';
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'localhost',
-  port: parseInt(process.env.SMTP_PORT || '1025'),
-  secure: false,
-  auth: process.env.SMTP_USER ? {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  } : undefined,
-});
+// Configuration SMTP pour production et développement
+function createTransporter() {
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  // En production, on exige les variables SMTP
+  if (isProduction) {
+    if (!process.env.SMTP_HOST || !process.env.SMTP_PORT) {
+      console.error('❌ SMTP configuration missing in production!');
+      console.error('Required: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM');
+      throw new Error('SMTP configuration is required in production');
+    }
+  }
+  
+  // Détection automatique du port sécurisé (TLS)
+  const port = parseInt(process.env.SMTP_PORT || '1025');
+  const secure = port === 465 || process.env.SMTP_SECURE === 'true';
+  
+  // Support pour les services SMTP populaires
+  const smtpHost = process.env.SMTP_HOST || 'localhost';
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  
+  // Configuration de base
+  const config: any = {
+    host: smtpHost,
+    port,
+    secure,
+    auth: smtpUser && smtpPass ? {
+      user: smtpUser,
+      pass: smtpPass,
+    } : undefined,
+  };
+  
+  // Configuration spécifique pour certains services
+  if (smtpHost.includes('gmail.com') || smtpHost.includes('googlemail.com')) {
+    // Gmail peut utiliser port 587 (STARTTLS) ou 465 (SSL)
+    if (port === 465) {
+      config.secure = true;
+      config.port = 465;
+    } else {
+      // Port 587 avec STARTTLS
+      config.secure = false;
+      config.port = 587;
+      config.requireTLS = true;
+    }
+    config.service = 'gmail';
+  } else if (smtpHost.includes('sendgrid')) {
+    config.secure = false;
+    config.port = 587;
+    config.requireTLS = true;
+  } else if (smtpHost.includes('resend.com') || smtpHost.includes('resend')) {
+    // Resend SMTP utilise le port 465 avec SSL
+    config.secure = true;
+    config.port = 465;
+  } else if (smtpHost.includes('mailgun.org')) {
+    // Mailgun utilise le port 587 avec STARTTLS
+    config.secure = false;
+    config.port = 587;
+    config.requireTLS = true;
+  }
+  
+  // Support pour TLS explicite (port 587 par défaut)
+  if (port === 587 && !config.requireTLS) {
+    config.secure = false;
+    config.requireTLS = true;
+  }
+  
+  const transporter = nodemailer.createTransport(config);
+  
+  // Test de la connexion en production (une fois au démarrage)
+  if (isProduction && smtpHost !== 'localhost') {
+    transporter.verify().then(() => {
+      console.log('✅ SMTP server connection verified');
+    }).catch((error) => {
+      console.error('❌ SMTP server connection failed:', error.message);
+      console.error('Please check your SMTP configuration');
+    });
+  }
+  
+  return transporter;
+}
+
+const transporter = createTransporter();
 
 const verifyEmailMjml = (username: string, verificationUrl: string) => `
 <mjml>
@@ -85,33 +159,58 @@ export async function sendVerificationEmail(
     console.error('MJML compilation errors:', errors);
   }
   
+  const isProduction = process.env.NODE_ENV === 'production';
+  const smtpFrom = process.env.SMTP_FROM || 'noreply@bustandchill.local';
+  
+  // Vérification en production
+  if (isProduction && !process.env.SMTP_HOST) {
+    console.error('❌ Cannot send email: SMTP not configured in production');
+    return false;
+  }
+  
   try {
     const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM || 'noreply@bustandchill.local',
+      from: smtpFrom,
       to: email,
       subject: '🃏 Verify your email - Bust & Chill',
       html,
       text: `Welcome to Bust & Chill, ${username}!\n\nPlease verify your email by visiting: ${verificationUrl}\n\nThis link expires in 24 hours.`,
     });
     
-    console.log('Email sent:', info.messageId);
+    console.log('✅ Email sent successfully:', info.messageId);
+    console.log('   To:', email);
+    console.log('   Subject: Verify your email - Bust & Chill');
     
-    // In development, log the preview URL if using MailHog or similar
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Verification URL:', verificationUrl);
+    // En développement, afficher aussi l'URL pour faciliter les tests
+    if (!isProduction) {
+      console.log('📧 Verification URL (dev):', verificationUrl);
     }
     
     return true;
-  } catch (error) {
-    console.error('Failed to send email:', error);
-    // In development, still return true and log the URL for testing
-    if (process.env.NODE_ENV === 'development') {
-      console.log('='.repeat(60));
-      console.log('EMAIL SENDING FAILED - Development fallback');
-      console.log('Verification URL:', verificationUrl);
-      console.log('='.repeat(60));
-      return true;
+  } catch (error: any) {
+    console.error('❌ Failed to send email:', error.message);
+    
+    // Détails supplémentaires pour le débogage
+    if (error.code) {
+      console.error('   Error code:', error.code);
     }
+    if (error.command) {
+      console.error('   Failed command:', error.command);
+    }
+    if (error.response) {
+      console.error('   SMTP response:', error.response);
+    }
+    
+    // En développement, on peut continuer pour les tests (MailHog local)
+    if (!isProduction) {
+      console.log('='.repeat(60));
+      console.log('⚠️  EMAIL SENDING FAILED - Development mode');
+      console.log('   Verification URL for testing:', verificationUrl);
+      console.log('='.repeat(60));
+      return true; // Permettre de continuer en dev même si SMTP échoue
+    }
+    
+    // En production, c'est une erreur critique
     return false;
   }
 }
