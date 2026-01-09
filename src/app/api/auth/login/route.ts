@@ -35,13 +35,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Check email verification
-    if (!user.emailVerifiedAt) {
-      return NextResponse.json(
-        { error: 'Veuillez vérifier votre email avant de vous connecter. Vérifiez votre boîte de réception pour le lien de vérification.' },
-        { status: 403 }
-      );
-    }
+    // Note: L'email de vérification est toujours envoyé mais n'est plus obligatoire pour se connecter
     
     // Set auth cookie
     await setAuthCookie({

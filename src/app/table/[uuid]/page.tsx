@@ -232,12 +232,14 @@ function PlayingCard({
         width: w, height: h,
         padding: actualSmall ? '2px' : '4px',
         border: '1px solid #e5e7eb',
-        opacity: 1, // Toujours visible
-        animation: (animate && !hasAnimated) ? 'cardDeal 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards' : 'none',
+        opacity: (animate && !hasAnimated) ? 0 : 1, // Commencer invisible si animation
+        animation: (animate && !hasAnimated) ? 'cardDealFromMachine 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards' : 'none',
         animationDelay: (animate && !hasAnimated) ? `${delay}ms` : '0ms',
         transform: hasAnimated ? 'translateX(0) translateY(0) rotate(0deg) scale(1)' : 'translateX(0) translateY(0) rotate(0deg) scale(1)',
         position: 'relative',
         zIndex: 1,
+        willChange: (animate && !hasAnimated) ? 'transform, opacity' : 'auto',
+        backfaceVisibility: 'hidden',
       }}
     >
       <div className="text-left" style={{ color: s.color, fontSize: small ? 9 : 11, fontWeight: 700 }}>
@@ -447,8 +449,8 @@ function PlayerSpot({
                 key={`${player.oderId}-card-${i}-${card.rank}-${card.suit}`} 
                 card={card} 
                 small={isMobile}
-                animate={false} // Désactiver l'animation pour éviter les bugs
-                delay={0}
+                animate={state.phase === 'dealing'} // Activer l'animation pendant la distribution
+                delay={i * 150} // Délai progressif pour chaque carte
               />
             ))}
           </div>
@@ -755,10 +757,21 @@ function FullscreenTable({
             )}
             
             {state.phase === 'dealing' && (
-              <div className="bg-black/40 backdrop-blur-sm px-4 sm:px-8 py-2 sm:py-4 rounded-xl sm:rounded-2xl">
-                <div className="text-white text-sm sm:text-xl font-medium flex items-center gap-2">
-                  <span className="inline-block w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
-                  <span>Distribution...</span>
+              <div className="bg-black/60 backdrop-blur-md px-6 sm:px-10 py-4 sm:py-6 rounded-2xl border-2 border-amber-500/30 shadow-2xl">
+                <div className="flex flex-col items-center gap-3">
+                  {/* Machine à distribuer style casino */}
+                  <div className="relative">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-amber-600 to-amber-800 rounded-full flex items-center justify-center shadow-lg border-2 border-amber-400/50 animate-pulse">
+                      <div className="text-3xl sm:text-4xl animate-spin" style={{ animationDuration: '1s' }}>🎰</div>
+                    </div>
+                    {/* Effet de lueur */}
+                    <div className="absolute inset-0 bg-amber-400/20 rounded-full blur-xl animate-pulse" />
+                  </div>
+                  <div className="text-amber-300 text-base sm:text-xl font-bold flex items-center gap-2">
+                    <span className="inline-block w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
+                    <span>Distribution des cartes...</span>
+                  </div>
+                  <div className="text-white/60 text-xs sm:text-sm">Le croupier distribue les cartes</div>
                 </div>
               </div>
             )}

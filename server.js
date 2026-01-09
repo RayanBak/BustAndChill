@@ -289,29 +289,63 @@ async function startDealingPhase(tableId) {
   const activePlayers = getActivePlayersForRound(state);
   console.log(`🎴 Dealing cards to ${activePlayers.length} active players:`, activePlayers.map(p => p.username));
   
-  // Deal 2 cards to each player
-  for (let round = 0; round < 2; round++) {
-    for (const player of activePlayers) {
-      const card = state.shoe.shift();
-      if (!card) {
-        console.error('❌ No more cards in shoe!');
-        // Reshuffle
-        state.shoe = createShoe(6);
-        const newCard = state.shoe.shift();
-        player.cards.push(newCard);
-      } else {
-        player.cards.push(card);
-      }
-      player.value = computeHandValue(player.cards);
-      console.log(`  🃏 Round ${round + 1}: ${player.username} got ${card?.rank || 'NO CARD'}${card ? getSuitSymbol(card.suit) : ''}, value: ${player.value}`);
+  // Distribution progressive style casino : une carte à la fois avec délai
+  // Round 1 : première carte à chaque joueur (de gauche à droite)
+  for (let i = 0; i < activePlayers.length; i++) {
+    const player = activePlayers[i];
+    await new Promise(resolve => setTimeout(resolve, DEALING_DELAY * (i + 1)));
+    
+    const card = state.shoe.shift();
+    if (!card) {
+      console.error('❌ No more cards in shoe!');
+      state.shoe = createShoe(6);
+      const newCard = state.shoe.shift();
+      player.cards.push(newCard);
+    } else {
+      player.cards.push(card);
     }
-    // Dealer gets a card
-    const dealerCard = state.shoe.shift();
-    if (dealerCard) {
-      state.dealer.cards.push(dealerCard);
-      state.dealer.value = computeHandValue(state.dealer.cards);
-      console.log(`  🎩 Dealer got ${dealerCard.rank}${getSuitSymbol(dealerCard.suit)}`);
+    player.value = computeHandValue(player.cards);
+    console.log(`  🃏 ${player.username} reçoit ${card?.rank || 'NO CARD'}${card ? getSuitSymbol(card.suit) : ''}`);
+    broadcastTableState(tableId);
+  }
+  
+  // Première carte du croupier (face cachée)
+  await new Promise(resolve => setTimeout(resolve, DEALING_DELAY));
+  const dealerCard1 = state.shoe.shift();
+  if (dealerCard1) {
+    state.dealer.cards.push(dealerCard1);
+    state.dealer.value = computeHandValue(state.dealer.cards);
+    console.log(`  🎩 Croupier reçoit une carte (face cachée)`);
+    broadcastTableState(tableId);
+  }
+  
+  // Round 2 : deuxième carte à chaque joueur
+  for (let i = 0; i < activePlayers.length; i++) {
+    const player = activePlayers[i];
+    await new Promise(resolve => setTimeout(resolve, DEALING_DELAY * (i + 1)));
+    
+    const card = state.shoe.shift();
+    if (!card) {
+      console.error('❌ No more cards in shoe!');
+      state.shoe = createShoe(6);
+      const newCard = state.shoe.shift();
+      player.cards.push(newCard);
+    } else {
+      player.cards.push(card);
     }
+    player.value = computeHandValue(player.cards);
+    console.log(`  🃏 ${player.username} reçoit ${card?.rank || 'NO CARD'}${card ? getSuitSymbol(card.suit) : ''}, total: ${player.value}`);
+    broadcastTableState(tableId);
+  }
+  
+  // Deuxième carte du croupier (face visible)
+  await new Promise(resolve => setTimeout(resolve, DEALING_DELAY));
+  const dealerCard2 = state.shoe.shift();
+  if (dealerCard2) {
+    state.dealer.cards.push(dealerCard2);
+    state.dealer.value = computeHandValue(state.dealer.cards);
+    console.log(`  🎩 Croupier révèle ${dealerCard2.rank}${getSuitSymbol(dealerCard2.suit)}`);
+    broadcastTableState(tableId);
   }
   
   // Vérification finale : tous les joueurs doivent avoir 2 cartes
