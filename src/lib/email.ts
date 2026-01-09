@@ -154,7 +154,7 @@ const verifyEmailMjml = (username: string, verificationUrl: string) => `
         <mj-text font-size="14px" color="#666666">
           Ou copiez et collez ce lien dans votre navigateur :
         </mj-text>
-        <mj-text font-size="12px" color="#1a472a" word-break="break-all">
+        <mj-text font-size="12px" color="#1a472a">
           ${verificationUrl}
         </mj-text>
         <mj-divider border-color="#e0e0e0" padding="20px 0" />
@@ -270,9 +270,21 @@ export async function sendVerificationEmail(
       hasAuth: !!(process.env.SMTP_USER && process.env.SMTP_PASS),
     });
     
-    // Timeout pour éviter que ça bloque indéfiniment (15 secondes pour SMTP)
-    console.log('📧 [EMAIL] Démarrage de l\'envoi avec timeout de 15 secondes...');
+    // Timeout pour éviter que ça bloque indéfiniment (30 secondes pour SMTP - Gmail peut être lent)
+    console.log('📧 [EMAIL] Démarrage de l\'envoi avec timeout de 30 secondes...');
     const startTime = Date.now();
+    
+    // Test de connexion avant l'envoi (optionnel mais utile pour diagnostiquer)
+    console.log('📧 [EMAIL] Test de connexion SMTP avant envoi...');
+    try {
+      await transporter.verify();
+      console.log('✅ [EMAIL] Connexion SMTP vérifiée avant envoi');
+    } catch (verifyError: any) {
+      console.error('❌ [EMAIL] Échec de la vérification SMTP:', verifyError.message);
+      console.error('❌ [EMAIL] Code:', verifyError.code);
+      console.error('❌ [EMAIL] Cela indique un problème de connexion avant même l\'envoi');
+      throw new Error(`Connexion SMTP impossible: ${verifyError.message}`);
+    }
     
     const sendPromise = transporter.sendMail(mailOptions);
     const timeoutPromise = new Promise<never>((_, reject) => {
@@ -281,8 +293,10 @@ export async function sendVerificationEmail(
         console.error(`⏱️ [EMAIL] Timeout après ${elapsed}ms: L'envoi d'email a pris trop de temps`);
         console.error('⏱️ [EMAIL] Cela indique probablement un problème de connexion SMTP');
         console.error('⏱️ [EMAIL] Vérifiez: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS');
-        reject(new Error('Timeout: L\'envoi d\'email a pris plus de 15 secondes'));
-      }, 15000);
+        console.error('⏱️ [EMAIL] Pour Gmail: assurez-vous d\'utiliser un "Mot de passe d\'application" (pas votre mot de passe Gmail)');
+        console.error('⏱️ [EMAIL] Gmail peut bloquer les connexions depuis certains serveurs - considérez SendGrid ou Resend');
+        reject(new Error('Timeout: L\'envoi d\'email a pris plus de 30 secondes'));
+      }, 30000);
     });
     
     const info = await Promise.race([sendPromise, timeoutPromise]);
