@@ -213,17 +213,37 @@ function PlayingCard({
   const { suit, rank } = card as Card;
   const s = suits[suit] || { symbol: '?', color: '#1f2937' };
 
-  // Stabiliser l'animation : une fois qu'elle est jouée, on garde l'état
+  // Détecter quand une nouvelle carte est ajoutée pour lancer l'animation
   const [hasAnimated, setHasAnimated] = useState(false);
+  const prevCardRef = useRef<string>('');
   
   useEffect(() => {
-    if (animate && delay >= 0 && !hasAnimated) {
-      const timer = setTimeout(() => {
-        setHasAnimated(true);
-      }, delay + 700); // Après la fin de l'animation
-      return () => clearTimeout(timer);
+    // Créer une clé unique pour cette carte
+    const cardKey = 'hidden' in card ? 'hidden' : `${(card as Card).rank}-${(card as Card).suit}`;
+    
+    // Si c'est une nouvelle carte (différente de la précédente), réinitialiser l'animation
+    if (cardKey !== prevCardRef.current) {
+      prevCardRef.current = cardKey;
+      setHasAnimated(false);
     }
-  }, [animate, delay, hasAnimated]);
+    
+    // Lancer l'animation et le son pour toute nouvelle carte
+    if (animate && !hasAnimated) {
+      // Jouer le son immédiatement pour toute nouvelle carte
+      const soundTimer = setTimeout(() => {
+        audio?.playCardSound();
+      }, delay);
+      
+      const animationTimer = setTimeout(() => {
+        setHasAnimated(true);
+      }, delay + 400); // Après la fin de l'animation
+      
+      return () => {
+        clearTimeout(soundTimer);
+        clearTimeout(animationTimer);
+      };
+    }
+  }, [animate, delay, card, hasAnimated]);
 
   return (
     <div
@@ -370,8 +390,8 @@ function PlayerSpot({
                       key={`split-${handIdx}-${i}-${card.rank}-${card.suit}`} 
                       card={card} 
                       small={isMobile}
-                      animate={phase === 'dealing'} // Activer l'animation pendant la distribution
-                      delay={handIdx * 200 + i * 150} // Délai progressif pour chaque main
+                      animate={true} // Toujours animer les nouvelles cartes
+                      delay={handIdx * 200 + i * 100} // Délai progressif pour chaque main
                     />
                   ))}
                 </div>
@@ -446,8 +466,8 @@ function PlayerSpot({
                 key={`${player.oderId}-card-${i}-${card.rank}-${card.suit}`} 
                 card={card} 
                 small={isMobile}
-                animate={phase === 'dealing'} // Activer l'animation pendant la distribution
-                delay={i * 150} // Délai progressif pour chaque carte
+                animate={true} // Toujours animer les nouvelles cartes
+                delay={i * 100} // Délai progressif pour chaque carte
               />
             ))}
           </div>
@@ -699,8 +719,8 @@ function FullscreenTable({
                       key={`dealer-${i}-${'hidden' in card ? 'hidden' : `${card.rank}-${card.suit}`}`} 
                       card={card} 
                       small={isMobile}
-                      animate={state.phase === 'dealing'} // Activer l'animation pendant la distribution
-                      delay={state.players.length * 150 + i * 150} // Délai après les joueurs
+                      animate={true} // Toujours animer les nouvelles cartes
+                      delay={i * 100} // Délai progressif pour chaque carte
                     />
                   ))}
                 </div>

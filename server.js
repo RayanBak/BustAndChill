@@ -237,6 +237,9 @@ async function startBettingPhase(tableId) {
     player.result = null;
     player.payout = 0;
     player.isSittingOut = false;
+    // Réinitialiser l'assurance pour la nouvelle manche
+    player.insuranceDecided = false;
+    player.insuranceBet = 0;
   }
   
   // Reset dealer
