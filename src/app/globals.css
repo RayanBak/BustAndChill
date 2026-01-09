@@ -75,15 +75,11 @@ body {
 
 @keyframes cardSlide {
   0% {
-    transform: translateY(-30px) scale(0.9) rotate(-5deg);
+    transform: translateY(-20px) scale(0.95);
     opacity: 0;
   }
-  50% {
-    transform: translateY(-5px) scale(1.05) rotate(2deg);
-    opacity: 0.8;
-  }
   100% {
-    transform: translateY(0) scale(1) rotate(0deg);
+    transform: translateY(0) scale(1);
     opacity: 1;
   }
 }
@@ -223,6 +219,9 @@ body {
   border-radius: 8px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   transition: transform 0.2s ease;
+  opacity: 1 !important; /* Force l'opacité pour éviter les bugs */
+  position: relative;
+  z-index: 1;
 }
 
 .playing-card:hover {
