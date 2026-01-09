@@ -88,9 +88,28 @@ function createTransporter() {
     });
   } else if (smtpHost.includes('sendgrid')) {
     console.log('🔧 [SMTP] Service SendGrid détecté');
-    config.secure = false;
-    config.port = 587;
-    config.requireTLS = true;
+    // SendGrid peut utiliser port 587 ou 2525 (port alternatif si 587 est bloqué)
+    // On essaie d'abord le port configuré, sinon on suggère 2525
+    if (port === 2525) {
+      console.log('🔧 [SMTP]   Port alternatif 2525 détecté');
+      config.port = 2525;
+      config.secure = false;
+      config.requireTLS = false; // Port 2525 n'utilise pas TLS
+    } else {
+      config.port = 587;
+      config.secure = false;
+      config.requireTLS = true;
+    }
+    // SendGrid nécessite des timeouts plus longs
+    config.connectionTimeout = 30000; // 30 secondes
+    config.greetingTimeout = 30000;
+    config.socketTimeout = 60000; // 60 secondes pour les opérations
+    console.log('🔧 [SMTP]   Timeouts ajustés pour SendGrid:', {
+      connectionTimeout: config.connectionTimeout,
+      greetingTimeout: config.greetingTimeout,
+      socketTimeout: config.socketTimeout,
+      port: config.port,
+    });
   } else if (smtpHost.includes('resend.com') || smtpHost.includes('resend')) {
     console.log('🔧 [SMTP] Service Resend détecté');
     config.secure = true;
@@ -313,49 +332,60 @@ export async function sendVerificationEmail(
       hasAuth: !!(process.env.SMTP_USER && process.env.SMTP_PASS),
     });
     
-    // Timeout pour éviter que ça bloque indéfiniment (30 secondes pour SMTP - Gmail peut être lent)
-    console.log('📧 [EMAIL] Démarrage de l\'envoi avec timeout de 30 secondes...');
+    // Timeout pour éviter que ça bloque indéfiniment
+    // SendGrid peut être plus lent, donc timeout plus long
+    const isSendGridForTimeout = process.env.SMTP_HOST?.includes('sendgrid');
+    const timeoutDuration = isSendGridForTimeout ? 60000 : 30000; // 60s pour SendGrid, 30s pour autres
+    console.log(`📧 [EMAIL] Démarrage de l'envoi avec timeout de ${timeoutDuration / 1000} secondes...`);
     const startTime = Date.now();
     
     // Test de connexion avant l'envoi (optionnel mais utile pour diagnostiquer)
-    console.log('📧 [EMAIL] ========== TEST DE CONNEXION SMTP ==========');
-    console.log('📧 [EMAIL] Étape 1: Tentative de connexion au serveur SMTP...');
-    console.log('📧 [EMAIL]   Host:', process.env.SMTP_HOST);
-    console.log('📧 [EMAIL]   Port:', process.env.SMTP_PORT);
-    console.log('📧 [EMAIL]   User:', process.env.SMTP_USER ? `${process.env.SMTP_USER.substring(0, 3)}***` : 'NON DÉFINI');
+    // Pour SendGrid, on peut parfois skip la vérification si elle timeout
+    const isSendGrid = process.env.SMTP_HOST?.includes('sendgrid');
     
-    const verifyStartTime = Date.now();
-    try {
-      console.log('📧 [EMAIL] Étape 2: Appel de transporter.verify()...');
-      await transporter.verify();
-      const verifyElapsed = Date.now() - verifyStartTime;
-      console.log(`✅ [EMAIL] Étape 3: Connexion SMTP vérifiée avec succès (${verifyElapsed}ms)`);
-      console.log('📧 [EMAIL] ========== FIN TEST CONNEXION ==========');
-    } catch (verifyError: any) {
-      const verifyElapsed = Date.now() - verifyStartTime;
-      console.error(`❌ [EMAIL] Échec après ${verifyElapsed}ms`);
-      console.error('❌ [EMAIL] Étape 3: Échec de la vérification SMTP');
-      console.error('❌ [EMAIL] Message:', verifyError.message);
-      console.error('❌ [EMAIL] Code:', verifyError.code);
-      console.error('❌ [EMAIL] Errno:', verifyError.errno);
-      console.error('❌ [EMAIL] Syscall:', verifyError.syscall);
-      console.error('❌ [EMAIL] Hostname:', verifyError.hostname);
-      console.error('❌ [EMAIL] Port:', verifyError.port);
-      if (verifyError.response) {
-        console.error('❌ [EMAIL] Réponse SMTP:', verifyError.response);
+    if (!isSendGrid) {
+      console.log('📧 [EMAIL] ========== TEST DE CONNEXION SMTP ==========');
+      console.log('📧 [EMAIL] Étape 1: Tentative de connexion au serveur SMTP...');
+      console.log('📧 [EMAIL]   Host:', process.env.SMTP_HOST);
+      console.log('📧 [EMAIL]   Port:', process.env.SMTP_PORT);
+      console.log('📧 [EMAIL]   User:', process.env.SMTP_USER ? `${process.env.SMTP_USER.substring(0, 3)}***` : 'NON DÉFINI');
+      
+      const verifyStartTime = Date.now();
+      try {
+        console.log('📧 [EMAIL] Étape 2: Appel de transporter.verify()...');
+        await transporter.verify();
+        const verifyElapsed = Date.now() - verifyStartTime;
+        console.log(`✅ [EMAIL] Étape 3: Connexion SMTP vérifiée avec succès (${verifyElapsed}ms)`);
+        console.log('📧 [EMAIL] ========== FIN TEST CONNEXION ==========');
+      } catch (verifyError: any) {
+        const verifyElapsed = Date.now() - verifyStartTime;
+        console.error(`❌ [EMAIL] Échec après ${verifyElapsed}ms`);
+        console.error('❌ [EMAIL] Étape 3: Échec de la vérification SMTP');
+        console.error('❌ [EMAIL] Message:', verifyError.message);
+        console.error('❌ [EMAIL] Code:', verifyError.code);
+        console.error('❌ [EMAIL] Errno:', verifyError.errno);
+        console.error('❌ [EMAIL] Syscall:', verifyError.syscall);
+        console.error('❌ [EMAIL] Hostname:', verifyError.hostname);
+        console.error('❌ [EMAIL] Port:', verifyError.port);
+        if (verifyError.response) {
+          console.error('❌ [EMAIL] Réponse SMTP:', verifyError.response);
+        }
+        if (verifyError.responseCode) {
+          console.error('❌ [EMAIL] Code de réponse SMTP:', verifyError.responseCode);
+        }
+        if (verifyError.command) {
+          console.error('❌ [EMAIL] Commande échouée:', verifyError.command);
+        }
+        if (verifyError.stack) {
+          console.error('❌ [EMAIL] Stack trace:', verifyError.stack);
+        }
+        console.error('❌ [EMAIL] Cela indique un problème de connexion avant même l\'envoi');
+        console.error('❌ [EMAIL] ========== FIN TEST CONNEXION (ÉCHEC) ==========');
+        throw new Error(`Connexion SMTP impossible: ${verifyError.message} (code: ${verifyError.code})`);
       }
-      if (verifyError.responseCode) {
-        console.error('❌ [EMAIL] Code de réponse SMTP:', verifyError.responseCode);
-      }
-      if (verifyError.command) {
-        console.error('❌ [EMAIL] Commande échouée:', verifyError.command);
-      }
-      if (verifyError.stack) {
-        console.error('❌ [EMAIL] Stack trace:', verifyError.stack);
-      }
-      console.error('❌ [EMAIL] Cela indique un problème de connexion avant même l\'envoi');
-      console.error('❌ [EMAIL] ========== FIN TEST CONNEXION (ÉCHEC) ==========');
-      throw new Error(`Connexion SMTP impossible: ${verifyError.message} (code: ${verifyError.code})`);
+    } else {
+      console.log('📧 [EMAIL] SendGrid détecté - skip de la vérification préalable (peut timeout)');
+      console.log('📧 [EMAIL] On va directement tenter l\'envoi');
     }
     
     console.log('📧 [EMAIL] Étape 4: Préparation de l\'envoi de l\'email...');
@@ -370,10 +400,16 @@ export async function sendVerificationEmail(
         console.error(`⏱️ [EMAIL] Timeout après ${elapsed}ms: L'envoi d'email a pris trop de temps`);
         console.error('⏱️ [EMAIL] Cela indique probablement un problème de connexion SMTP');
         console.error('⏱️ [EMAIL] Vérifiez: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS');
-        console.error('⏱️ [EMAIL] Pour Gmail: assurez-vous d\'utiliser un "Mot de passe d\'application" (pas votre mot de passe Gmail)');
-        console.error('⏱️ [EMAIL] Gmail peut bloquer les connexions depuis certains serveurs - considérez SendGrid ou Resend');
-        reject(new Error('Timeout: L\'envoi d\'email a pris plus de 30 secondes'));
-      }, 30000);
+        if (isSendGridForTimeout) {
+          console.error('⏱️ [EMAIL] Pour SendGrid: Le port 587 peut être bloqué par Railway');
+          console.error('⏱️ [EMAIL] SOLUTION: Essayez le port 2525 (port alternatif SendGrid)');
+          console.error('⏱️ [EMAIL] Sur Railway, changez SMTP_PORT=2525 et SMTP_SECURE=false');
+        } else {
+          console.error('⏱️ [EMAIL] Pour Gmail: assurez-vous d\'utiliser un "Mot de passe d\'application"');
+          console.error('⏱️ [EMAIL] Gmail peut bloquer les connexions depuis certains serveurs - considérez SendGrid ou Resend');
+        }
+        reject(new Error(`Timeout: L'envoi d'email a pris plus de ${timeoutDuration / 1000} secondes`));
+      }, timeoutDuration);
     });
     
     console.log('📧 [EMAIL] Étape 5: Envoi de l\'email en cours...');
