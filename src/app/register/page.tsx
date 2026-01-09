@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthContext } from '@/hooks/useAuth';
@@ -17,16 +17,35 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [redirectTimer, setRedirectTimer] = useState<NodeJS.Timeout | null>(null);
   const { register } = useAuthContext();
   const router = useRouter();
+  
+  // Nettoyer le timer au démontage
+  useEffect(() => {
+    return () => {
+      if (redirectTimer) {
+        clearTimeout(redirectTimer);
+      }
+    };
+  }, [redirectTimer]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     setError('');
+    setSuccess(''); // Réinitialiser aussi le succès pour permettre une nouvelle soumission
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation(); // Empêcher la propagation
+    
+    // Empêcher les soumissions multiples
+    if (isLoading) {
+      console.warn('⚠️ [REGISTER] Soumission déjà en cours, ignore...');
+      return;
+    }
+    
     setError('');
     setSuccess('');
 
@@ -65,32 +84,38 @@ export default function RegisterPage() {
         
         setSuccess(result.message || 'Inscription réussie ! Vérifiez votre email pour valider votre compte.');
         
-        // Réinitialiser le formulaire
-        setFormData({
-          firstname: '',
-          lastname: '',
-          email: '',
-          username: '',
-          password: '',
-          confirmPassword: '',
-        });
+        // Réinitialiser le formulaire seulement si ce n'est pas un utilisateur existant
+        if (!result.existingUser) {
+          setFormData({
+            firstname: '',
+            lastname: '',
+            email: '',
+            username: '',
+            password: '',
+            confirmPassword: '',
+          });
+        }
         
         console.log('⏱️ [REGISTER] Redirection vers /login dans 3 secondes...');
         // Rediriger après 3 secondes
-        setTimeout(() => {
+        const timer = setTimeout(() => {
           console.log('🔄 [REGISTER] Redirection vers /login maintenant');
           router.push('/login');
         }, 3000);
+        setRedirectTimer(timer);
       } else {
         console.error('❌ [REGISTER] Inscription échouée:', result.message);
         setError(result.message || 'Échec de l\'inscription');
+        // Ne pas rediriger, juste afficher l'erreur
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('❌ [REGISTER] Erreur lors de l\'inscription:', err);
-      setError('Une erreur est survenue. Veuillez réessayer.');
+      console.error('❌ [REGISTER] Type d\'erreur:', err?.name);
+      console.error('❌ [REGISTER] Message:', err?.message);
+      setError(err?.message || 'Une erreur est survenue. Veuillez réessayer.');
     } finally {
       setIsLoading(false);
-      console.log('🔵 [REGISTER] Processus d\'inscription terminé');
+      console.log('🔵 [REGISTER] Processus d\'inscription terminé, isLoading:', false);
     }
   };
 
@@ -122,7 +147,7 @@ export default function RegisterPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div className="grid grid-cols-2 gap-4">
               <div className="form-control">
                 <label className="label">
@@ -215,10 +240,15 @@ export default function RegisterPage() {
             <button
               type="submit"
               className="btn btn-primary w-full"
-              disabled={isLoading}
+              disabled={isLoading || success.length > 0}
             >
               {isLoading ? (
-                <span className="loading loading-spinner"></span>
+                <>
+                  <span className="loading loading-spinner loading-sm"></span>
+                  <span>Inscription en cours...</span>
+                </>
+              ) : success ? (
+                'Redirection...'
               ) : (
                 'Créer un compte'
               )}

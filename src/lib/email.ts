@@ -95,14 +95,16 @@ function createTransporter() {
   
   const transporter = nodemailer.createTransport(config);
   
-  // Test de la connexion en production (une fois au démarrage)
+  // Test de la connexion en production (une fois au démarrage) - ASYNCHRONE pour ne pas bloquer
   if (isProduction && smtpHost !== 'localhost') {
-    console.log('🔧 [SMTP] Vérification de la connexion SMTP...');
+    console.log('🔧 [SMTP] Vérification de la connexion SMTP (asynchrone)...');
     transporter.verify().then(() => {
       console.log('✅ [SMTP] Connexion SMTP vérifiée avec succès');
     }).catch((error) => {
       console.error('❌ [SMTP] Échec de la vérification de connexion:', error.message);
+      console.error('❌ [SMTP] Code:', error.code);
       console.error('❌ [SMTP] Vérifiez votre configuration SMTP');
+      console.error('❌ [SMTP] Variables requises: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS');
     });
   } else if (!isProduction) {
     console.log('🔧 [SMTP] Mode développement - pas de vérification de connexion');
@@ -201,12 +203,13 @@ export async function sendVerificationEmail(
   
   console.log('📧 [EMAIL] ========== CONFIGURATION SMTP ==========');
   console.log('📧 [EMAIL] NODE_ENV:', process.env.NODE_ENV || 'non défini');
-  console.log('📧 [EMAIL] SMTP_HOST:', process.env.SMTP_HOST || 'NON DÉFINI');
-  console.log('📧 [EMAIL] SMTP_PORT:', process.env.SMTP_PORT || 'NON DÉFINI');
-  console.log('📧 [EMAIL] SMTP_USER:', process.env.SMTP_USER ? `${process.env.SMTP_USER.substring(0, 3)}***` : 'NON DÉFINI');
-  console.log('📧 [EMAIL] SMTP_PASS:', process.env.SMTP_PASS ? '***' + process.env.SMTP_PASS.substring(process.env.SMTP_PASS.length - 3) : 'NON DÉFINI');
+  console.log('📧 [EMAIL] SMTP_HOST:', process.env.SMTP_HOST || '❌ NON DÉFINI');
+  console.log('📧 [EMAIL] SMTP_PORT:', process.env.SMTP_PORT || '❌ NON DÉFINI');
+  console.log('📧 [EMAIL] SMTP_USER:', process.env.SMTP_USER ? `${process.env.SMTP_USER.substring(0, 3)}*** (longueur: ${process.env.SMTP_USER.length})` : '❌ NON DÉFINI');
+  console.log('📧 [EMAIL] SMTP_PASS:', process.env.SMTP_PASS ? `***${process.env.SMTP_PASS.substring(process.env.SMTP_PASS.length - 3)} (longueur: ${process.env.SMTP_PASS.length})` : '❌ NON DÉFINI');
   console.log('📧 [EMAIL] SMTP_FROM:', smtpFrom);
   console.log('📧 [EMAIL] SMTP_SECURE:', process.env.SMTP_SECURE || 'auto');
+  console.log('📧 [EMAIL] NEXT_PUBLIC_APP_URL:', process.env.NEXT_PUBLIC_APP_URL || '❌ NON DÉFINI');
   
   // Vérification en production
   if (isProduction && !process.env.SMTP_HOST) {
@@ -214,18 +217,24 @@ export async function sendVerificationEmail(
     console.error('❌ [EMAIL] SMTP non configuré en production !');
     console.error('❌ [EMAIL] L\'utilisateur sera créé mais l\'email de vérification ne fonctionnera pas');
     console.error('❌ [EMAIL] Variables requises: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM');
+    console.error('❌ [EMAIL] ACTION: Allez sur Railway → Variables → Raw Editor et ajoutez ces variables');
     return false;
   }
   
   // Vérifier que toutes les variables nécessaires sont présentes
-  const missingVars = [];
+  const missingVars: string[] = [];
   if (!process.env.SMTP_HOST) missingVars.push('SMTP_HOST');
   if (!process.env.SMTP_PORT) missingVars.push('SMTP_PORT');
   if (!process.env.SMTP_USER) missingVars.push('SMTP_USER');
   if (!process.env.SMTP_PASS) missingVars.push('SMTP_PASS');
+  if (!process.env.NEXT_PUBLIC_APP_URL) missingVars.push('NEXT_PUBLIC_APP_URL');
   
   if (missingVars.length > 0) {
-    console.error('❌ [EMAIL] Variables SMTP manquantes:', missingVars.join(', '));
+    console.error('❌ [EMAIL] Variables manquantes:', missingVars.join(', '));
+    console.error('❌ [EMAIL] L\'envoi d\'email va probablement échouer');
+    if (isProduction) {
+      console.error('❌ [EMAIL] ACTION REQUISE: Ajoutez ces variables dans Railway → Variables → Raw Editor');
+    }
   } else {
     console.log('✅ [EMAIL] Toutes les variables SMTP sont présentes');
   }
@@ -245,7 +254,32 @@ export async function sendVerificationEmail(
     };
     
     console.log('📧 [EMAIL] Envoi via transporter...');
-    const info = await transporter.sendMail(mailOptions);
+    const smtpPort = parseInt(process.env.SMTP_PORT || '1025');
+    console.log('📧 [EMAIL] Configuration utilisée:', {
+      host: process.env.SMTP_HOST,
+      port: process.env.SMTP_PORT,
+      secure: smtpPort === 465 || process.env.SMTP_SECURE === 'true',
+      hasAuth: !!(process.env.SMTP_USER && process.env.SMTP_PASS),
+    });
+    
+    // Timeout pour éviter que ça bloque indéfiniment (15 secondes pour SMTP)
+    console.log('📧 [EMAIL] Démarrage de l\'envoi avec timeout de 15 secondes...');
+    const startTime = Date.now();
+    
+    const sendPromise = transporter.sendMail(mailOptions);
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        const elapsed = Date.now() - startTime;
+        console.error(`⏱️ [EMAIL] Timeout après ${elapsed}ms: L'envoi d'email a pris trop de temps`);
+        console.error('⏱️ [EMAIL] Cela indique probablement un problème de connexion SMTP');
+        console.error('⏱️ [EMAIL] Vérifiez: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS');
+        reject(new Error('Timeout: L\'envoi d\'email a pris plus de 15 secondes'));
+      }, 15000);
+    });
+    
+    const info = await Promise.race([sendPromise, timeoutPromise]);
+    const elapsed = Date.now() - startTime;
+    console.log(`⏱️ [EMAIL] Envoi réussi en ${elapsed}ms`);
     
     console.log('✅ [EMAIL] ========== EMAIL ENVOYÉ AVEC SUCCÈS ==========');
     console.log('✅ [EMAIL] Message ID:', info.messageId);

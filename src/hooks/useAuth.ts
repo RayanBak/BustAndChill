@@ -20,7 +20,7 @@ interface AuthContextType {
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (data: RegisterData) => Promise<{ success: boolean; message?: string; emailSent?: boolean }>;
+  register: (data: RegisterData) => Promise<{ success: boolean; message?: string; emailSent?: boolean; existingUser?: boolean }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   getToken: () => string | null;
@@ -124,7 +124,7 @@ export function useAuth() {
     }
   }, [fetchUser]);
 
-  const register = useCallback(async (registerData: RegisterData): Promise<{ success: boolean; message?: string; emailSent?: boolean }> => {
+  const register = useCallback(async (registerData: RegisterData): Promise<{ success: boolean; message?: string; emailSent?: boolean; existingUser?: boolean }> => {
     setError(null);
     console.log('📤 [API] Envoi de la requête d\'inscription à /api/auth/register');
     console.log('📤 [API] Données envoyées:', { 
@@ -135,11 +135,17 @@ export function useAuth() {
     });
     
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // Timeout de 30 secondes
+      
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(registerData),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       console.log('📥 [API] Réponse reçue:', {
         status: response.status,
@@ -157,8 +163,18 @@ export function useAuth() {
       }
 
       console.log('✅ [API] Inscription réussie côté API');
-      return { success: true, message: data.message, emailSent: data.emailSent };
-    } catch (error) {
+      return { 
+        success: true, 
+        message: data.message, 
+        emailSent: data.emailSent,
+        existingUser: data.existingUser || false
+      };
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.error('❌ [API] Timeout de la requête d\'inscription (30s dépassé)');
+        setError('La requête prend trop de temps. Vérifiez votre connexion ou réessayez.');
+        return { success: false, message: 'Timeout de la requête' };
+      }
       console.error('❌ [API] Erreur réseau lors de l\'inscription:', error);
       setError('Échec de l\'inscription. Veuillez réessayer.');
       return { success: false, message: 'Erreur réseau lors de l\'inscription' };

@@ -50,8 +50,70 @@ export async function POST(request: NextRequest) {
     
     if (existingUser) {
       if (existingUser.email === email.toLowerCase()) {
+        // Si l'email existe mais n'est pas vérifié, on peut renvoyer l'email
+        if (!existingUser.emailVerifiedAt) {
+          console.log('📧 [REGISTER API] Email existant mais non vérifié, renvoi de l\'email...');
+          
+          // Supprimer les anciens tokens
+          await prisma.emailVerificationToken.deleteMany({
+            where: { userId: existingUser.id },
+          });
+          
+          // Créer un nouveau token
+          const token = generateVerificationToken();
+          const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+          
+          await prisma.emailVerificationToken.create({
+            data: {
+              userId: existingUser.id,
+              token,
+              expiresAt,
+            },
+          });
+          
+          console.log('📧 [REGISTER API] Nouveau token créé pour l\'utilisateur existant');
+          console.log('📧 [REGISTER API] Tentative d\'envoi d\'email...');
+          
+          // Renvoyer l'email de vérification avec timeout
+          console.log('📧 [REGISTER API] Tentative d\'envoi d\'email avec timeout de 15s...');
+          const emailSentPromise = sendVerificationEmail(existingUser.email, existingUser.username, token);
+          const timeoutPromise = new Promise<boolean>((resolve) => {
+            setTimeout(() => {
+              console.error('⏱️ [REGISTER API] Timeout lors du renvoi d\'email (15s)');
+              resolve(false);
+            }, 15000);
+          });
+          
+          const emailSent = await Promise.race([emailSentPromise, timeoutPromise]).catch((err) => {
+            console.error('❌ [REGISTER API] Erreur lors du renvoi d\'email:', err);
+            console.error('❌ [REGISTER API] Type:', err?.constructor?.name);
+            console.error('❌ [REGISTER API] Message:', err?.message);
+            return false;
+          });
+          
+          if (emailSent) {
+            console.log('✅ [REGISTER API] Email de vérification renvoyé avec succès');
+            return NextResponse.json({
+              success: true,
+              message: 'Un nouvel email de vérification a été envoyé. Vérifiez votre boîte de réception (et les spams).',
+              emailSent: true,
+              existingUser: true,
+            });
+          } else {
+            console.warn('⚠️ [REGISTER API] Échec du renvoi d\'email (timeout ou erreur SMTP)');
+            console.warn('⚠️ [REGISTER API] Token de vérification (pour debug):', token.substring(0, 20) + '...');
+            return NextResponse.json({
+              success: false,
+              error: 'Votre compte existe mais n\'est pas vérifié. L\'envoi de l\'email a échoué (timeout ou erreur SMTP). Vérifiez la configuration SMTP sur Railway ou contactez le support.',
+              emailSent: false,
+              existingUser: true,
+            }, { status: 400 });
+          }
+        }
+        
+        // Email déjà vérifié
         return NextResponse.json(
-          { error: 'Email déjà enregistré' },
+          { error: 'Cet email est déjà enregistré et vérifié. Vous pouvez vous connecter.' },
           { status: 400 }
         );
       }
