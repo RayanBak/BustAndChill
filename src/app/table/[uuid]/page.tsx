@@ -449,7 +449,7 @@ function PlayerSpot({
                 key={`${player.oderId}-card-${i}-${card.rank}-${card.suit}`} 
                 card={card} 
                 small={isMobile}
-                animate={state.phase === 'dealing'} // Activer l'animation pendant la distribution
+                animate={phase === 'dealing'} // Activer l'animation pendant la distribution
                 delay={i * 150} // Délai progressif pour chaque carte
               />
             ))}
