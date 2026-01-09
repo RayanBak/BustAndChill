@@ -2,13 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
+  // Utiliser NEXT_PUBLIC_APP_URL au lieu de request.url pour éviter les redirections vers 0.0.0.0:8080
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  
   try {
     const { searchParams } = new URL(request.url);
     const token = searchParams.get('token');
     
     if (!token) {
       // Rediriger vers la page de login avec un message d'erreur
-      const loginUrl = new URL('/login?error=missing_token', request.url);
+      const loginUrl = new URL('/login?error=missing_token', baseUrl);
       return NextResponse.redirect(loginUrl);
     }
     
@@ -20,7 +23,7 @@ export async function GET(request: NextRequest) {
     
     if (!verificationToken) {
       // Rediriger vers la page de login avec un message d'erreur
-      const loginUrl = new URL('/login?error=invalid_token', request.url);
+      const loginUrl = new URL('/login?error=invalid_token', baseUrl);
       return NextResponse.redirect(loginUrl);
     }
     
@@ -32,14 +35,14 @@ export async function GET(request: NextRequest) {
       });
       
       // Rediriger vers la page de login avec un message d'erreur
-      const loginUrl = new URL('/login?error=expired_token', request.url);
+      const loginUrl = new URL('/login?error=expired_token', baseUrl);
       return NextResponse.redirect(loginUrl);
     }
     
     // Check if already verified
     if (verificationToken.user.emailVerifiedAt) {
       // Rediriger vers login avec un message indiquant que c'est déjà vérifié
-      const loginUrl = new URL('/login?verified=already', request.url);
+      const loginUrl = new URL('/login?verified=already', baseUrl);
       return NextResponse.redirect(loginUrl);
     }
     
@@ -55,13 +58,13 @@ export async function GET(request: NextRequest) {
     });
     
     // Rediriger vers la page de login avec un message de succès
-    const loginUrl = new URL('/login?verified=1', request.url);
+    const loginUrl = new URL('/login?verified=1', baseUrl);
     return NextResponse.redirect(loginUrl);
     
   } catch (error) {
     console.error('Email verification error:', error);
     // Rediriger vers la page de login avec un message d'erreur
-    const loginUrl = new URL('/login?error=verification_failed', request.url);
+    const loginUrl = new URL('/login?error=verification_failed', baseUrl);
     return NextResponse.redirect(loginUrl);
   }
 }
