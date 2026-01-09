@@ -104,7 +104,7 @@ const verifyEmailMjml = (username: string, verificationUrl: string) => `
           🃏 Bust & Chill
         </mj-text>
         <mj-text align="center" color="#fbbf24" font-size="16px">
-          Blackjack Multiplayer
+          Blackjack Multijoueur
         </mj-text>
       </mj-column>
     </mj-section>
@@ -112,23 +112,23 @@ const verifyEmailMjml = (username: string, verificationUrl: string) => `
     <mj-section background-color="#ffffff" padding="40px 30px" border-radius="0 0 8px 8px">
       <mj-column>
         <mj-text font-size="24px" color="#1a472a" font-weight="bold">
-          Welcome, ${username}! 👋
+          Bienvenue, ${username} ! 👋
         </mj-text>
         <mj-text>
-          Thanks for signing up for Bust & Chill! To complete your registration and start playing, please verify your email address.
+          Merci de vous être inscrit sur Bust & Chill ! Pour compléter votre inscription et commencer à jouer, veuillez vérifier votre adresse email.
         </mj-text>
         <mj-button background-color="#1a472a" color="#ffffff" font-size="18px" padding="20px 0" href="${verificationUrl}" border-radius="8px">
-          Verify My Email
+          Vérifier mon email
         </mj-button>
         <mj-text font-size="14px" color="#666666">
-          Or copy and paste this link in your browser:
+          Ou copiez et collez ce lien dans votre navigateur :
         </mj-text>
         <mj-text font-size="12px" color="#1a472a" word-break="break-all">
           ${verificationUrl}
         </mj-text>
         <mj-divider border-color="#e0e0e0" padding="20px 0" />
         <mj-text font-size="14px" color="#999999">
-          This link will expire in 24 hours. If you didn't create an account, you can safely ignore this email.
+          Ce lien expirera dans 24 heures. Si vous n'avez pas créé de compte, vous pouvez ignorer cet email en toute sécurité.
         </mj-text>
       </mj-column>
     </mj-section>
@@ -136,7 +136,7 @@ const verifyEmailMjml = (username: string, verificationUrl: string) => `
     <mj-section padding="20px">
       <mj-column>
         <mj-text align="center" font-size="12px" color="#999999">
-          © 2024 Bust & Chill - Local Multiplayer Blackjack
+          © 2024 Bust & Chill - Blackjack Multijoueur
         </mj-text>
       </mj-column>
     </mj-section>
@@ -172,9 +172,9 @@ export async function sendVerificationEmail(
     const info = await transporter.sendMail({
       from: smtpFrom,
       to: email,
-      subject: '🃏 Verify your email - Bust & Chill',
+      subject: '🃏 Vérifiez votre email - Bust & Chill',
       html,
-      text: `Welcome to Bust & Chill, ${username}!\n\nPlease verify your email by visiting: ${verificationUrl}\n\nThis link expires in 24 hours.`,
+      text: `Bienvenue sur Bust & Chill, ${username} !\n\nVeuillez vérifier votre email en visitant : ${verificationUrl}\n\nCe lien expire dans 24 heures.`,
     });
     
     console.log('✅ Email sent successfully:', info.messageId);

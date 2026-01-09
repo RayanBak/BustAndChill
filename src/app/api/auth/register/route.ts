@@ -12,28 +12,28 @@ export async function POST(request: NextRequest) {
     // Validation
     if (!firstname || !lastname || !email || !username || !password) {
       return NextResponse.json(
-        { error: 'All fields are required' },
+        { error: 'Tous les champs sont requis' },
         { status: 400 }
       );
     }
     
     if (!isValidEmail(email)) {
       return NextResponse.json(
-        { error: 'Invalid email format' },
+        { error: 'Format d\'email invalide' },
         { status: 400 }
       );
     }
     
     if (!isValidUsername(username)) {
       return NextResponse.json(
-        { error: 'Username must be 3-20 characters and contain only letters, numbers, and underscores' },
+        { error: 'Le nom d\'utilisateur doit contenir 3-20 caractères et uniquement des lettres, chiffres et underscores' },
         { status: 400 }
       );
     }
     
     if (!isValidPassword(password)) {
       return NextResponse.json(
-        { error: 'Password must be at least 6 characters' },
+        { error: 'Le mot de passe doit contenir au moins 6 caractères' },
         { status: 400 }
       );
     }
@@ -51,12 +51,12 @@ export async function POST(request: NextRequest) {
     if (existingUser) {
       if (existingUser.email === email.toLowerCase()) {
         return NextResponse.json(
-          { error: 'Email already registered' },
+          { error: 'Email déjà enregistré' },
           { status: 400 }
         );
       }
       return NextResponse.json(
-        { error: 'Username already taken' },
+        { error: 'Nom d\'utilisateur déjà pris' },
         { status: 400 }
       );
     }
@@ -90,13 +90,13 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
-      message: 'Registration successful! Please check your email to verify your account.',
+      message: 'Inscription réussie ! Veuillez vérifier votre email pour valider votre compte.',
     });
     
   } catch (error) {
     console.error('Registration error:', error);
     return NextResponse.json(
-      { error: 'Registration failed. Please try again.' },
+      { error: 'Échec de l\'inscription. Veuillez réessayer.' },
       { status: 500 }
     );
   }

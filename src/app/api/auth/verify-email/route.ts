@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     
     if (!token) {
       return NextResponse.json(
-        { error: 'Verification token is required' },
+        { error: 'Token de vérification requis' },
         { status: 400 }
       );
     }
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     
     if (!verificationToken) {
       return NextResponse.json(
-        { error: 'Invalid or expired verification token' },
+        { error: 'Token de vérification invalide ou expiré' },
         { status: 400 }
       );
     }
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       });
       
       return NextResponse.json(
-        { error: 'Verification token has expired. Please register again.' },
+        { error: 'Le token de vérification a expiré. Veuillez vous réinscrire.' },
         { status: 400 }
       );
     }
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     if (verificationToken.user.emailVerifiedAt) {
       return NextResponse.json({
         success: true,
-        message: 'Email already verified. You can log in.',
+        message: 'Email déjà vérifié. Vous pouvez vous connecter.',
         alreadyVerified: true,
       });
     }
@@ -61,13 +61,13 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
-      message: 'Email verified successfully! You can now log in.',
+      message: 'Email vérifié avec succès ! Vous pouvez maintenant vous connecter.',
     });
     
   } catch (error) {
     console.error('Email verification error:', error);
     return NextResponse.json(
-      { error: 'Email verification failed. Please try again.' },
+      { error: 'Échec de la vérification de l\'email. Veuillez réessayer.' },
       { status: 500 }
     );
   }

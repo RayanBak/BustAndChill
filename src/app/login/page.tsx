@@ -31,7 +31,7 @@ export default function LoginPage() {
     if (success) {
       router.push('/dashboard');
     } else {
-      setError('Invalid email or password, or email not verified');
+      setError('Email ou mot de passe invalide, ou email non vérifié');
     }
   };
 
@@ -41,8 +41,8 @@ export default function LoginPage() {
         <div className="card-body">
           <div className="text-center mb-4">
             <div className="text-5xl mb-2">🃏</div>
-            <h1 className="text-2xl font-bold">Welcome Back</h1>
-            <p className="text-base-content/60">Sign in to Bust & Chill</p>
+            <h1 className="text-2xl font-bold">Bon retour</h1>
+            <p className="text-base-content/60">Connectez-vous à Bust & Chill</p>
           </div>
 
           {error && (
@@ -64,14 +64,14 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="input input-bordered"
-                placeholder="you@example.com"
+                placeholder="vous@exemple.com"
                 required
               />
             </div>
 
             <div className="form-control">
               <label className="label">
-                <span className="label-text">Password</span>
+                <span className="label-text">Mot de passe</span>
               </label>
               <input
                 type="password"
@@ -91,17 +91,17 @@ export default function LoginPage() {
               {isLoading ? (
                 <span className="loading loading-spinner"></span>
               ) : (
-                'Sign In'
+                'Se connecter'
               )}
             </button>
           </form>
 
-          <div className="divider">OR</div>
+          <div className="divider">OU</div>
 
           <p className="text-center">
-            Don&apos;t have an account?{' '}
+            Vous n&apos;avez pas de compte ?{' '}
             <Link href="/register" className="link link-primary">
-              Create one
+              Créer un compte
             </Link>
           </p>
         </div>

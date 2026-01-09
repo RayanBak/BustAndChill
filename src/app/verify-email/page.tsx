@@ -13,7 +13,7 @@ function VerifyEmailContent() {
   useEffect(() => {
     if (!token) {
       setStatus('error');
-      setMessage('No verification token provided');
+      setMessage('Aucun token de vérification fourni');
       return;
     }
 
@@ -24,14 +24,14 @@ function VerifyEmailContent() {
 
         if (response.ok) {
           setStatus('success');
-          setMessage(data.message || 'Email verified successfully!');
+          setMessage(data.message || 'Email vérifié avec succès !');
         } else {
           setStatus('error');
-          setMessage(data.error || 'Verification failed');
+          setMessage(data.error || 'Échec de la vérification');
         }
       } catch {
         setStatus('error');
-        setMessage('An error occurred during verification');
+        setMessage('Une erreur s\'est produite lors de la vérification');
       }
     };
 
@@ -45,18 +45,18 @@ function VerifyEmailContent() {
           {status === 'loading' && (
             <>
               <span className="loading loading-spinner loading-lg text-primary"></span>
-              <h2 className="card-title mt-4">Verifying your email...</h2>
-              <p className="text-base-content/60">Please wait while we verify your email address.</p>
+              <h2 className="card-title mt-4">Vérification de votre email...</h2>
+              <p className="text-base-content/60">Veuillez patienter pendant que nous vérifions votre adresse email.</p>
             </>
           )}
 
           {status === 'success' && (
             <>
               <div className="text-6xl mb-4">✅</div>
-              <h2 className="card-title text-success">Email Verified!</h2>
+              <h2 className="card-title text-success">Email vérifié !</h2>
               <p className="text-base-content/60 mb-4">{message}</p>
               <Link href="/login" className="btn btn-primary">
-                Sign In Now
+                Se connecter maintenant
               </Link>
             </>
           )}
@@ -64,14 +64,14 @@ function VerifyEmailContent() {
           {status === 'error' && (
             <>
               <div className="text-6xl mb-4">❌</div>
-              <h2 className="card-title text-error">Verification Failed</h2>
+              <h2 className="card-title text-error">Échec de la vérification</h2>
               <p className="text-base-content/60 mb-4">{message}</p>
               <div className="flex gap-2">
                 <Link href="/register" className="btn btn-outline">
-                  Register Again
+                  S'inscrire à nouveau
                 </Link>
                 <Link href="/login" className="btn btn-primary">
-                  Try Login
+                  Essayer de se connecter
                 </Link>
               </div>
             </>

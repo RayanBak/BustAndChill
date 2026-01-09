@@ -31,7 +31,7 @@ export default function RegisterPage() {
     setSuccess('');
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setError('Les mots de passe ne correspondent pas');
       return;
     }
 
@@ -48,10 +48,10 @@ export default function RegisterPage() {
     setIsLoading(false);
 
     if (result.success) {
-      setSuccess(result.message || 'Registration successful! Check your email to verify your account.');
+      setSuccess(result.message || 'Inscription réussie ! Vérifiez votre email pour valider votre compte.');
       setTimeout(() => router.push('/login'), 3000);
     } else {
-      setError(result.message || 'Registration failed');
+      setError(result.message || 'Échec de l\'inscription');
     }
   };
 
@@ -61,8 +61,8 @@ export default function RegisterPage() {
         <div className="card-body">
           <div className="text-center mb-4">
             <div className="text-5xl mb-2">🃏</div>
-            <h1 className="text-2xl font-bold">Create Account</h1>
-            <p className="text-base-content/60">Join Bust & Chill today</p>
+            <h1 className="text-2xl font-bold">Créer un compte</h1>
+            <p className="text-base-content/60">Rejoignez Bust & Chill dès aujourd'hui</p>
           </div>
 
           {error && (
@@ -87,7 +87,7 @@ export default function RegisterPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">First Name</span>
+                  <span className="label-text">Prénom</span>
                 </label>
                 <input
                   type="text"
@@ -100,7 +100,7 @@ export default function RegisterPage() {
               </div>
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Last Name</span>
+                  <span className="label-text">Nom</span>
                 </label>
                 <input
                   type="text"
@@ -129,7 +129,7 @@ export default function RegisterPage() {
 
             <div className="form-control">
               <label className="label">
-                <span className="label-text">Username</span>
+                <span className="label-text">Nom d'utilisateur</span>
               </label>
               <input
                 type="text"
@@ -138,14 +138,14 @@ export default function RegisterPage() {
                 onChange={handleChange}
                 className="input input-bordered"
                 pattern="[a-zA-Z0-9_]{3,20}"
-                title="3-20 characters, letters, numbers, and underscores only"
+                title="3-20 caractères, lettres, chiffres et underscores uniquement"
                 required
               />
             </div>
 
             <div className="form-control">
               <label className="label">
-                <span className="label-text">Password</span>
+                <span className="label-text">Mot de passe</span>
               </label>
               <input
                 type="password"
@@ -160,7 +160,7 @@ export default function RegisterPage() {
 
             <div className="form-control">
               <label className="label">
-                <span className="label-text">Confirm Password</span>
+                <span className="label-text">Confirmer le mot de passe</span>
               </label>
               <input
                 type="password"
@@ -181,17 +181,17 @@ export default function RegisterPage() {
               {isLoading ? (
                 <span className="loading loading-spinner"></span>
               ) : (
-                'Create Account'
+                'Créer un compte'
               )}
             </button>
           </form>
 
-          <div className="divider">OR</div>
+          <div className="divider">OU</div>
 
           <p className="text-center">
-            Already have an account?{' '}
+            Vous avez déjà un compte ?{' '}
             <Link href="/login" className="link link-primary">
-              Sign in
+              Se connecter
             </Link>
           </p>
         </div>
