@@ -57,7 +57,70 @@ function DashboardContent() {
       const data = await response.json();
 
       if (response.ok) {
-        router.push(`/table/${data.tableId}`);
+        // Si table privée, afficher le code avant de rediriger
+        if (tableVisibility === 'private') {
+          setError(''); // Clear any previous errors
+          // Afficher le code dans une alerte ou modal
+          const shareUrl = `${window.location.origin}/table/${data.tableId}`;
+          const code = data.tableId;
+          
+          // Créer un modal pour afficher le code
+          const modal = document.createElement('div');
+          modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4';
+          modal.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+          modal.innerHTML = `
+            <div class="bg-slate-800 rounded-2xl p-8 max-w-md w-full border-2 border-amber-500/50">
+              <h3 class="text-2xl font-bold text-white mb-4">🔒 Table privée créée !</h3>
+              <p class="text-slate-400 mb-4">Partagez ce code avec vos amis :</p>
+              <div class="bg-slate-900 rounded-xl p-4 mb-4 border border-amber-500/30">
+                <div class="flex items-center justify-between gap-3">
+                  <code class="text-amber-400 font-mono text-lg break-all">${code}</code>
+                  <button id="copy-btn" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-lg transition-all">
+                    📋 Copier
+                  </button>
+                </div>
+              </div>
+              <div class="flex gap-3">
+                <button id="close-btn" class="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-all">
+                  Aller à la table
+                </button>
+              </div>
+            </div>
+          `;
+          document.body.appendChild(modal);
+          
+          const copyBtn = modal.querySelector('#copy-btn');
+          const closeBtn = modal.querySelector('#close-btn');
+          
+          copyBtn?.addEventListener('click', async () => {
+            try {
+              await navigator.clipboard.writeText(code);
+              copyBtn.textContent = '✓ Copié !';
+              copyBtn.classList.add('bg-emerald-500', 'hover:bg-emerald-400');
+              setTimeout(() => {
+                copyBtn.textContent = '📋 Copier';
+                copyBtn.classList.remove('bg-emerald-500', 'hover:bg-emerald-400');
+              }, 2000);
+            } catch (err) {
+              console.error('Failed to copy:', err);
+            }
+          });
+          
+          closeBtn?.addEventListener('click', () => {
+            document.body.removeChild(modal);
+            router.push(`/table/${data.tableId}`);
+          });
+          
+          // Auto-close after 10 seconds
+          setTimeout(() => {
+            if (document.body.contains(modal)) {
+              document.body.removeChild(modal);
+              router.push(`/table/${data.tableId}`);
+            }
+          }, 10000);
+        } else {
+          router.push(`/table/${data.tableId}`);
+        }
       } else {
         setError(data.error || 'Erreur lors de la création');
         if (data.tableId) {

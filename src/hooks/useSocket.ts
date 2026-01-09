@@ -247,6 +247,7 @@ export interface TableState {
   tableId: string;
   name: string;
   phase: 'lobby' | 'betting' | 'dealing' | 'insurance' | 'player_turn' | 'dealer_turn' | 'settlement';
+  visibility?: 'public' | 'private';
   currentRound: number;
   minBet: number;
   maxBet: number;

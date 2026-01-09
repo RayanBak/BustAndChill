@@ -1328,6 +1328,7 @@ function broadcastTableState(tableId) {
     tableId: state.tableId,
     name: state.name,
     phase: state.phase,
+    visibility: state.visibility,
     currentRound: state.currentRound,
     minBet: state.minBet,
     maxBet: state.maxBet,

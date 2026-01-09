@@ -272,6 +272,35 @@ function PlayingCard({
   );
 }
 
+// ============ BOUTON PARTAGE CODE ============
+function ShareCodeButton({ tableId }: { tableId: string }) {
+  const [copied, setCopied] = useState(false);
+  
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(tableId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+  
+  return (
+    <div className="flex items-center gap-2 px-2 py-1 bg-amber-500/20 border border-amber-500/30 rounded-lg">
+      <span className="text-amber-400 text-xs font-medium">🔒 Code:</span>
+      <code className="text-amber-300 text-xs font-mono max-w-[100px] truncate">{tableId}</code>
+      <button
+        onClick={handleCopy}
+        className="text-amber-400 hover:text-amber-300 transition-colors"
+        title="Copier le code"
+      >
+        {copied ? '✓' : '📋'}
+      </button>
+    </div>
+  );
+}
+
 // ============ HISTORIQUE JOUEUR ============
 function PlayerHistory({ history }: { history: RoundResult[] }) {
   if (!history || history.length === 0) return null;
@@ -649,6 +678,10 @@ function FullscreenTable({
           </button>
           <span className="text-white font-semibold text-sm sm:text-base truncate max-w-[150px] sm:max-w-none">{state.name}</span>
           <span className="text-white/40 text-xs sm:text-sm">• Manche {state.currentRound}</span>
+          {/* Afficher le code pour les tables privées */}
+          {state.visibility === 'private' && state.isHost && (
+            <ShareCodeButton tableId={params.uuid as string} />
+          )}
         </div>
         
         <div className="flex items-center gap-2 sm:gap-6 flex-wrap">
