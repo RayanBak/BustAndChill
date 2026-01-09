@@ -38,12 +38,12 @@ async function sendViaSendGridAPI(
         from: { email: smtpFrom, name: 'Bust & Chill' },
         content: [
           {
-            type: 'text/html',
-            value: html,
-          },
-          {
             type: 'text/plain',
             value: `Bienvenue sur Bust & Chill, ${username} !\n\nVeuillez vérifier votre email en visitant : ${verificationUrl}\n\nCe lien expire dans 24 heures.`,
+          },
+          {
+            type: 'text/html',
+            value: html,
           },
         ],
       }),
