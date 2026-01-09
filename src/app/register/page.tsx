@@ -61,7 +61,7 @@ export default function RegisterPage() {
       if (result.success) {
         console.log('✅ [REGISTER] Inscription réussie !');
         console.log('📧 [REGISTER] Message:', result.message);
-        console.log('📧 [REGISTER] Email envoyé:', result.emailSent !== false ? 'Oui' : 'Non');
+        console.log('📧 [REGISTER] Email envoyé:', result.emailSent === undefined || result.emailSent !== false ? 'Oui' : 'Non');
         
         setSuccess(result.message || 'Inscription réussie ! Vérifiez votre email pour valider votre compte.');
         

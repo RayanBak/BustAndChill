@@ -20,7 +20,7 @@ interface AuthContextType {
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (data: RegisterData) => Promise<{ success: boolean; message?: string }>;
+  register: (data: RegisterData) => Promise<{ success: boolean; message?: string; emailSent?: boolean }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   getToken: () => string | null;
